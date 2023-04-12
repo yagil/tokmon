@@ -22,6 +22,7 @@ def main(model: str, prompt: Optional[str] = None, stream: bool = False):
             model=model,
             messages=messages,
             stream=stream,
+            temperature=0,
         )
     
     if stream:
@@ -30,10 +31,10 @@ def main(model: str, prompt: Optional[str] = None, stream: bool = False):
             choice = msg.choices[0]
             if "delta" in choice:
                 if "content" in choice["delta"]:
-                    token = choice["delta"]["content"]
-                    print(token, end="", flush=True)
+                    tokens = choice["delta"]["content"]
+                    print(tokens, end="", flush=True)
     else:
-        print("Got response.")
+        print(f"Got response: {call_res}")
 
 if __name__ == "__main__":
     # if sys.arv contains '--prompt' then run headless
@@ -43,10 +44,10 @@ if __name__ == "__main__":
 
     stream = "--stream" in sys.argv
 
-    # model = "gpt-3.5-turbo"
-    model = "gpt-4"
+    model = "gpt-3.5-turbo"
+    # model = "gpt-4"
     
     if headless:
         main(model, prompt=sys.argv[2], stream=stream)
     else:
-        main(stream=stream)
+        main(model, stream=stream)
