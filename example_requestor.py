@@ -14,7 +14,7 @@ def main(model: str, prompt: Optional[str] = None, stream: bool = False):
     if not prompt:
         prompt = input("Enter prompt and press ENTER\n")
     else:
-        print(f"Prompt: {prompt}\n")
+        print(f"Prompt: {prompt}")
     messages.append({"role": "user", "content": prompt})
     print()
 
@@ -25,8 +25,7 @@ def main(model: str, prompt: Optional[str] = None, stream: bool = False):
             temperature=0,
         )
     
-    if stream:
-        # if stream=True call_res is a generator
+    if stream: # when stream is True, call_res is a generator
         for msg in call_res:
             choice = msg.choices[0]
             if "delta" in choice:
@@ -34,7 +33,7 @@ def main(model: str, prompt: Optional[str] = None, stream: bool = False):
                     tokens = choice["delta"]["content"]
                     print(tokens, end="", flush=True)
     else:
-        print(f"Got response: {call_res}")
+        pass # don't print anything (for no reason)
 
 if __name__ == "__main__":
     # if sys.arv contains '--prompt' then run headless

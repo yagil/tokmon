@@ -3,7 +3,7 @@ import argparse
 import json
 import sys
 
-from tokmon import monitor_cost
+from tokmon import TokenMonitor
 from typing import Dict
 
 PROG_NAME = "tokmon"
@@ -26,7 +26,7 @@ def color(s:str, color:str, bold:bool = True):
 def generate_usage_report(monitored_invocation:str ,model:str, usage_data:Dict, pricing:Dict, total_cost:float):
     model_pricing = pricing[model]
 
-    cost_str = f"${total_cost:.9f}"
+    cost_str = f"${total_cost:.6f}"
     report_header = f"{PROG_NAME} cost report:"
 
     return f"""
@@ -38,7 +38,9 @@ def generate_usage_report(monitored_invocation:str ,model:str, usage_data:Dict, 
 {bold("Pricing")}: {model_pricing}
 {color("Cost", MAGENTA)}: {color(cost_str, MAGENTA)}
 {color('='*80, GRAY, bold=False)}
-    """
+"""
+
+OPENAI_API_PATH = "https://api.openai.com"
 
 def cli():
     """
@@ -54,20 +56,29 @@ def cli():
     args = parser.parse_args()
 
     pricing = json.load(open("pricing.json", "r"))
-
-    # support other providers in the future...
-    OPENAI_API_PATH = "https://api.openai.com"
-    
     monitored_prog = f"{args.program_name} { ' '.join(args.args) if args.args else ''}"
-    print(f"Monitoring program for token costs {color(monitored_prog, GREEN)}...")
-    
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    
-    model, usage_data, total_cost = loop.run_until_complete(monitor_cost(OPENAI_API_PATH, pricing, args.program_name, *args.args))
-    monitored_invocation = [args.program_name] + [arg for arg in args.args]
-    report = generate_usage_report(monitored_invocation, model, usage_data, pricing, total_cost)
-    print(f"\n{report}")
+    model, usage_data, total_cost = None, None, 0
+
+    tokmon = TokenMonitor(OPENAI_API_PATH, pricing, args.program_name, *args.args)
+
+    try:
+        print(f"[{PROG_NAME}] Monitoring program for token costs {color(monitored_prog, GREEN)} ...")
+
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+        loop.run_until_complete(tokmon.start_monitoring())
+    except KeyboardInterrupt:
+        print(f"\n[{PROG_NAME}] Interrupted. Generating {PROG_NAME} usage report ...")
+    finally:
+        tokmon.stop_monitoring()
+        model, usage_data, total_cost = tokmon.calculate_usage()
+        if model and usage_data:
+            monitored_invocation = [args.program_name] + [arg for arg in args.args]
+            report = generate_usage_report(monitored_invocation, model, usage_data, pricing, total_cost)
+            print(f"\n{report}")
+        else:
+            print(f"[{PROG_NAME}] No usage data available.")
 
 if __name__ == '__main__':
     cli()

@@ -14,21 +14,25 @@ from mitmproxy.tools.dump import DumpMaster
 PORT = 7878
 
 class TokenMonitor:
-    def __init__(self, target_url, program_name, verbose=False):
+    def __init__(self, target_url, pricing, program_name, *args, verbose=False):
+        self.mitm = None
         self.target_url = target_url
         self.program_name = program_name
+        self.args = args
+        self.pricing = pricing
+        self.process = None
         self.usage_data = {program_name: {}}
         self.using_stream = False
         self.tokenizer = None
         self.model = {} # { program_name: model}
         self.verbose = verbose
 
-    def responseheaders(self, flow: http.HTTPFlow):
-        if self.target_url in flow.request.pretty_url:
-            content_type = flow.response.headers.get("Content-Type", "")
-            if "text/event-stream" in content_type:
-                # Set stream = False to buffer the response chunks
-                flow.response.stream = False
+    # def responseheaders(self, flow: http.HTTPFlow):
+    #     if self.target_url in flow.request.pretty_url:
+    #         content_type = flow.response.headers.get("Content-Type", "")
+    #         if "text/event-stream" in content_type:
+    #             # Set stream = False to buffer the response chunks
+    #             flow.response.stream = True
 
     def request(self, flow: http.HTTPFlow):
         self.handle_request(flow)
@@ -65,13 +69,17 @@ class TokenMonitor:
         else:
             raise Exception("No response data")
 
-    def run(self, program_name, args):
+    def _run(self):
+        opts = options.Options(listen_host='0.0.0.0', listen_port=PORT)
+        self.mitm = DumpMaster(opts, with_termlog=False, with_dumper=False)
+        self.mitm.addons.add(self)
+
         env = os.environ.copy()
         env["HTTP_PROXY"] = f"http://localhost:{PORT}"
         env["HTTPS_PROXY"] = f"http://localhost:{PORT}"
         env["REQUESTS_CA_BUNDLE"] = os.path.abspath("mitmproxy-ca-cert.pem")
 
-        self.process = subprocess.Popen([program_name] + [arg for arg in args], env=env)
+        self.process = subprocess.Popen([self.program_name] + [arg for arg in self.args], env=env)
     
     def init_tokenizer_if_needed(self, model):
         """
@@ -79,7 +87,8 @@ class TokenMonitor:
         """
         if self.tokenizer is None:
             self.tokenizer = tiktoken.encoding_for_model(model)
-            print(f"Initialized tokenizer for model {model}. Tokenizer: {self.tokenizer}")
+            if self.verbose:
+                print(f"Initialized tokenizer for model {model}. Tokenizer: {self.tokenizer}")
             assert self.tokenizer.decode(self.tokenizer.encode("hello world")) == "hello world"
 
     def accumulate_stream_request_tokens(self, request_data):
@@ -114,7 +123,8 @@ class TokenMonitor:
             return token_count
 
         tokens = count_tokens_in_json(request_data)
-        print(f"Accumulating {tokens} tokens for prompt")
+        if self.verbose:
+            print(f"Accumulating {tokens} tokens for prompt")
         self.usage_data[self.program_name]["prompt_tokens"] = tokens
 
     def accumulate_stream_response_tokens(self, raw_messages: typing.List[str]):
@@ -169,33 +179,33 @@ class TokenMonitor:
         if program_name not in self.usage_data:
             raise Exception(f"Program {program_name} not found in usage data")
         return self.model[self.program_name], self.usage_data[program_name]
-
-async def monitor_cost(target_url:str, pricing:Dict, program_name: Optional[str] = None, *args:Optional[tuple]):
-    opts = options.Options(listen_host='0.0.0.0', listen_port=PORT)
-    m = DumpMaster(opts, with_termlog=False, with_dumper=False)
-
-    costCalculator = CostCalculator(pricing)
-    tokenMonitor = TokenMonitor(target_url, program_name)
-    m.addons.add(tokenMonitor)
     
-    tokenMonitor.run(program_name, args)
+    async def start_monitoring(self):        
+        self._run()
 
-    async def run_mitmproxy():
-        try:
-            await m.run()
-        except KeyboardInterrupt:
-            m.shutdown()
-        except Exception as e:
-            print(e)
-            m.shutdown()
+        async def run_mitmproxy():
+            try:
+                await self.mitm.run()
+            except KeyboardInterrupt:
+                pass
+            except Exception as e:
+                print(e)
+            finally:
+                self.stop_monitoring()
 
-    async def wait_subprocess():
-        while tokenMonitor.process.poll() is None:
-            await asyncio.sleep(1)
-        m.shutdown()
+        async def wait_subprocess():
+            while self.process.poll() is None:
+                await asyncio.sleep(1)
+            self.stop_monitoring()
 
-    await asyncio.gather(run_mitmproxy(), wait_subprocess())
+        await asyncio.gather(run_mitmproxy(), wait_subprocess())
+    
+    def stop_monitoring(self):
+        self.process.terminate()
+        self.mitm.shutdown()
 
-    model, usage_data = tokenMonitor.token_usage(program_name)
-    total_cost = costCalculator.calculate_cost(model, usage_data)
-    return model, usage_data, total_cost
+    def calculate_usage(self):
+        costCalculator = CostCalculator(self.pricing)
+        model, usage_data = self.token_usage(self.program_name)
+        total_cost = costCalculator.calculate_cost(model, usage_data)
+        return model, usage_data, total_cost
