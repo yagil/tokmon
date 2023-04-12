@@ -2,9 +2,9 @@ import asyncio
 import os
 import json
 import subprocess
-import io
 import typing
 import tiktoken
+from costcalculator import CostCalculator
 
 from typing import Optional, Dict
 
@@ -13,21 +13,21 @@ from mitmproxy.tools.dump import DumpMaster
 
 PORT = 7878
 
-class CostInterceptor:
-    def __init__(self, target_url, program_name, pricing):
+class TokenMonitor:
+    def __init__(self, target_url, program_name, verbose=False):
         self.target_url = target_url
         self.program_name = program_name
-        self.pricing = pricing
-        self.cost_data = {}
-        self.is_streaming = False
-        self.tokenizer = None # we init this only if is_streaming is True
-        self.stream_token_count = {"prompt_tokens": 0, "completion_tokens": 0} # mimic OpenAI's 'usage' dict format
+        self.usage_data = {program_name: {}}
+        self.using_stream = False
+        self.tokenizer = None
+        self.model = {} # { program_name: model}
+        self.verbose = verbose
 
     def responseheaders(self, flow: http.HTTPFlow):
         if self.target_url in flow.request.pretty_url:
             content_type = flow.response.headers.get("Content-Type", "")
             if "text/event-stream" in content_type:
-                # Set stream=False to buffer the response
+                # Set stream = False to buffer the response chunks
                 flow.response.stream = False
 
     def request(self, flow: http.HTTPFlow):
@@ -40,14 +40,14 @@ class CostInterceptor:
         if self.target_url in flow.request.pretty_url:
             try:
                 request_data = json.loads(flow.request.content)
-                print(request_data)
-                request_model = request_data["model"]
-                self.is_streaming = request_data["stream"]
-                print(f"Model used: {request_model}. Streaming: {self.is_streaming}")
+                if self.verbose:
+                    print(request_data)
+                self.model[self.program_name] = request_data["model"]
+                self.using_stream = request_data["stream"]
 
-                if self.is_streaming:
-                    self.init_tokenizer_if_needed(request_model)
-                    self.accumulate_request_tokens(request_data)
+                if self.using_stream:
+                    self.init_tokenizer_if_needed(self.model[self.program_name])
+                    self.accumulate_stream_request_tokens(request_data)
 
             except json.JSONDecodeError:
                 print("Failed to parse request data as JSON")
@@ -57,19 +57,14 @@ class CostInterceptor:
             return
     
         if flow.response.text:
-            if self.is_streaming:
-                cost = self.calculate_cost_stream(flow.response.text)
+            if self.using_stream:
+                self.accumulate_stream_response_tokens(flow.response.text)
             else:    
                 response_data = json.loads(flow.response.text)
-                cost = self.calculate_cost(response_data)
-        
-            if self.program_name in self.cost_data:
-                self.cost_data[self.program_name]["cost"] += cost
-            else:
-                self.cost_data[self.program_name] = {"cost": cost}
+                self.usage_data[self.program_name] = response_data["usage"]
         else:
             raise Exception("No response data")
-        
+
     def run(self, program_name, args):
         env = os.environ.copy()
         env["HTTP_PROXY"] = f"http://localhost:{PORT}"
@@ -77,47 +72,21 @@ class CostInterceptor:
         env["REQUESTS_CA_BUNDLE"] = os.path.abspath("mitmproxy-ca-cert.pem")
 
         self.process = subprocess.Popen([program_name] + [arg for arg in args], env=env)
-
-    # cost stuff (todo: move to separate class)
-    # ---------------------------------------------------------
-
-    def calculate_cost_for_tokens(self, model, tokens):
-        price = self.pricing[model]["cost"]
-        per_tokens = self.pricing[model]["per_tokens"]
-        print(f"Model {model} price ${price} per {per_tokens} tokens")
-        return (float(tokens) / per_tokens) * price
-        
-    def calculate_cost(self, response_data):
-        """
-        Calculate the cost based o the response data.
-        This works for non-streaming. See `calculate_cost_stream` for streaming.
-        """
-        cost = 0
-
-        model = response_data["model"]
-        usage = response_data["usage"]
-        print(usage)
-
-        if model not in self.pricing:
-            print(f"Model {model} not found in pricing data.  Skipping...")
-            raise Exception("Model not found in pricing data")
-        
-        prompt_tokens = usage["prompt_tokens"] # unused
-        completion_tokens = usage["completion_tokens"] # unused
-        total_tokens = usage["total_tokens"]
-
-        return self.calculate_cost_for_tokens(model, total_tokens)
     
-    def total_cost(self, program_name):
-        if program_name in self.cost_data:
-            return self.cost_data[program_name]["cost"]
-        return 0
+    def init_tokenizer_if_needed(self, model):
+        """
+        https://github.com/openai/tiktoken
+        """
+        if self.tokenizer is None:
+            self.tokenizer = tiktoken.encoding_for_model(model)
+            print(f"Initialized tokenizer for model {model}. Tokenizer: {self.tokenizer}")
+            assert self.tokenizer.decode(self.tokenizer.encode("hello world")) == "hello world"
 
-    def accumulate_request_tokens(self, request_data):
+    def accumulate_stream_request_tokens(self, request_data):
         """
         Accumulate request costs for streaming requests.
         """
-        assert self.is_streaming
+        assert self.using_stream
         assert self.tokenizer is not None
 
         def count_tokens(text):
@@ -146,10 +115,9 @@ class CostInterceptor:
 
         tokens = count_tokens_in_json(request_data)
         print(f"Accumulating {tokens} tokens for prompt")
-        self.stream_token_count["prompt_tokens"] += tokens
+        self.usage_data[self.program_name]["prompt_tokens"] = tokens
 
-
-    def calculate_cost_stream(self, raw_messages: typing.List[str]):
+    def accumulate_stream_response_tokens(self, raw_messages: typing.List[str]):
         """
         When streaming, OpenAI's API doesn't return usage data.
         To work around this, we use tiktoken directly.
@@ -158,6 +126,8 @@ class CostInterceptor:
         """
         
         model = None
+
+        completion_tokens = 0
 
         # mitmproxy buffers the returned SSE chunks as one big string
         for msg in raw_messages.split("\n"):
@@ -177,7 +147,7 @@ class CostInterceptor:
                         if "content" in choice["delta"]:
                             tokens = choice["delta"]["content"]
                             encoded_tokens = self.tokenizer.encode(tokens)
-                            self.stream_token_count["completion_tokens"] += len(encoded_tokens)
+                            completion_tokens += len(encoded_tokens)
 
                 except json.JSONDecodeError as e:
                     print(f"\n\n ! ! Failed to parse response data as JSON {e} --- <{msg}> ! !\n\n")
@@ -185,39 +155,30 @@ class CostInterceptor:
                     print(f"\n\n ! ! Failed to parse response data: {e} ! !\n\n")
                     raise e
         
-        prompt_tokens = self.stream_token_count["prompt_tokens"]
-        completion_tokens = self.stream_token_count["completion_tokens"]
+        assert "prompt_tokens" in self.usage_data[self.program_name]
+        prompt_tokens = self.usage_data[self.program_name]["prompt_tokens"]
         total_tokens = prompt_tokens + completion_tokens
         
-        print(f"< Model: {model}, [prompt tokens: {prompt_tokens}, completion tokens: {completion_tokens}, total tokens: {total_tokens}] >")
-        return self.calculate_cost_for_tokens(model, total_tokens)
-    
-    def init_tokenizer_if_needed(self, model):
-        """
-        https://github.com/openai/tiktoken
-        """
-        if self.tokenizer is None:
-            self.tokenizer = tiktoken.encoding_for_model(model)
-            print(f"Initialized tokenizer for model {model}. Tokenizer: {self.tokenizer}")
-            assert self.tokenizer.decode(self.tokenizer.encode("hello world")) == "hello world"
-            
+        self.usage_data[self.program_name]["completion_tokens"] = completion_tokens
+        self.usage_data[self.program_name]["total_tokens"] = total_tokens
 
-def run_mitmproxy(m):
-    try:
-        m.run()
-    except KeyboardInterrupt:
-        m.shutdown()
-    except Exception as e:
-        print(f"Exception while running mitmproxy: {e}")
+    def token_usage(self, program_name):
+        """
+        Returns the model and usage data for the given program name.
+        """
+        if program_name not in self.usage_data:
+            raise Exception(f"Program {program_name} not found in usage data")
+        return self.model[self.program_name], self.usage_data[program_name]
 
-async def monitor_cost(target_url:str, pricing:Dict, program_name: Optional[str] = None, *args:Optional[tuple], daemon:bool=False):
+async def monitor_cost(target_url:str, pricing:Dict, program_name: Optional[str] = None, *args:Optional[tuple]):
     opts = options.Options(listen_host='0.0.0.0', listen_port=PORT)
     m = DumpMaster(opts, with_termlog=False, with_dumper=False)
 
-    constMonitor = CostInterceptor(target_url, program_name, pricing)
-    m.addons.add(constMonitor)
+    costCalculator = CostCalculator(pricing)
+    tokenMonitor = TokenMonitor(target_url, program_name)
+    m.addons.add(tokenMonitor)
     
-    constMonitor.run(program_name, args)
+    tokenMonitor.run(program_name, args)
 
     async def run_mitmproxy():
         try:
@@ -229,17 +190,12 @@ async def monitor_cost(target_url:str, pricing:Dict, program_name: Optional[str]
             m.shutdown()
 
     async def wait_subprocess():
-        while constMonitor.process.poll() is None:
+        while tokenMonitor.process.poll() is None:
             await asyncio.sleep(1)
-        total_cost = constMonitor.total_cost(program_name)
-        print(f"\nTotal cost for {program_name} {args} was ${total_cost}")
         m.shutdown()
 
-    if daemon:
-        while True:
-            await asyncio.sleep(1)
-    else:
-        await asyncio.gather(run_mitmproxy(), wait_subprocess())
+    await asyncio.gather(run_mitmproxy(), wait_subprocess())
 
-def query_cost_data(program_name):
-    pass
+    model, usage_data = tokenMonitor.token_usage(program_name)
+    total_cost = costCalculator.calculate_cost(model, usage_data)
+    return model, usage_data, total_cost

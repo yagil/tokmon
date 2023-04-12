@@ -1,0 +1,18 @@
+{   
+    "gpt-4": {"prompt_cost": 0.03, "completion_cost": 0.06, "per_tokens": 1000},
+    "gpt-4-0314": {"prompt_cost": 0.03, "completion_cost": 0.06, "per_tokens": 1000},
+    "gpt-4-32k": {"prompt_cost": 0.06, "completion_cost": 0.12, "per_tokens": 1000},
+    "gpt-4-32k-0314": {"prompt_cost": 0.06, "completion_cost": 0.12, "per_tokens": 1000},
+    "gpt-3.5-turbo": {"prompt_cost": 0.002, "completion_cost": 0.002, "per_tokens": 1000},
+    "gpt-3.5-turbo-0301": {"prompt_cost": 0.002, "completion_cost": 0.002, "per_tokens": 1000},
+    "text-davinci-003": {"cost": 0.02, "per_tokens": 1000},
+    "text-curie-001": {"cost": 0.002, "per_tokens": 1000},
+    "text-babbage-001": {"cost": 0.0005, "per_tokens": 1000},
+    "text-ada-001": {"cost": 0.0004, "per_tokens": 1000},
+    "text-embedding-ada-002": {"cost": 0.0004, "per_tokens": 1000},
+    "last_updated": "2023-04-12",
+    "data_sources": [
+        "https://openai.com/pricing",
+        "https://platform.openai.com/docs/models/model-endpoint-compatibility"
+    ]
+}
