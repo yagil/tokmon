@@ -48,17 +48,20 @@ def cli():
     After te program has finished running, the {PROG_NAME} will print the total cost of the program.
     """
 
-    parser = argparse.ArgumentParser(description="A utility to monitor OpenAI token cost.")
+    parser = argparse.ArgumentParser(description="A utility to monitor OpenAI token cost of a target program.")
 
     parser.add_argument("program_name", help="The name of the monitored program")
     parser.add_argument("args", nargs=argparse.REMAINDER, help="The command and arguments to run the monitored program")
 
     args = parser.parse_args()
 
+    # Note, pricing data may go out of date
     pricing = json.load(open("pricing.json", "r"))
+
     monitored_prog = f"{args.program_name} { ' '.join(args.args) if args.args else ''}"
     model, usage_data, total_cost = None, None, 0
 
+    # Instantiate the token monitor
     tokmon = TokenMonitor(OPENAI_API_PATH, pricing, args.program_name, *args.args)
 
     try:
@@ -69,7 +72,7 @@ def cli():
 
         loop.run_until_complete(tokmon.start_monitoring())
     except KeyboardInterrupt:
-        print(f"\n[{PROG_NAME}] Interrupted. Generating {PROG_NAME} usage report ...")
+        print(f"\n[{PROG_NAME}] Interrupted. Generating token usage report ...")
     finally:
         tokmon.stop_monitoring()
         model, usage_data, total_cost = tokmon.calculate_usage()
