@@ -10,9 +10,17 @@ load_dotenv()
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-def main(model: str, prompt: Optional[str] = None, stream: bool = False):
-    messages = [{"role": "system", "content": "You're a helpful assistant."}]
+messages = [{"role": "system", "content": "You're a helpful assistant."}]
 
+def main(model: str, prompt: Optional[str] = None, stream: bool = False, interactive: bool = False):
+    if interactive:
+        print("'-i' flag found. Running in a loop...")
+        while True:
+            call_openai(model, prompt, stream)
+    else:
+        call_openai(model, prompt, stream)
+
+def call_openai(model: str, prompt: Optional[str], stream: bool):
     if not prompt:
         prompt = input("Enter prompt and press ENTER\n")
     else:
@@ -44,11 +52,12 @@ if __name__ == "__main__":
         headless = sys.argv[1] == "--prompt"
 
     stream = "--stream" in sys.argv
+    interactive = "-i" in sys.argv
 
     model = "gpt-3.5-turbo"
     # model = "gpt-4"
     
     if headless:
-        main(model, prompt=sys.argv[2], stream=stream)
+        main(model, prompt=sys.argv[2], stream=stream, interactive=interactive)
     else:
-        main(model, stream=stream)
+        main(model, stream=stream, interactive=interactive)
