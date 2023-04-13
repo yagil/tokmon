@@ -28,6 +28,7 @@ Cost: $0.003000
 ================================================================================
 ```
 
+- `tokmon` works for any executable regardless of programming language (i.e. it will work on scripts or programs in `.js`, `.ts`, `.py`, `.go`, `.cpp` etc. etc.)
 - You can run multiple instances of `tokmon` simultaenously. Each invocation will generate a separate usage report.
 
 ## Install from source
