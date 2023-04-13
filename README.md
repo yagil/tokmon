@@ -23,15 +23,19 @@ After your program finishes running (or you `ctrl^C` it), `tokmon` will automati
 ```yaml
 tokmon cost report:
 ================================================================================
-Monitored invocation: ['./my_gpt_program', '--my_arg', 'hi']
-Model: gpt-4
-Usage: {'prompt_tokens': 74, 'completion_tokens': 13, 'total_tokens': 87}
-Pricing: {'prompt_cost': 0.03, 'completion_cost': 0.06, 'per_tokens': 1000}
-Cost: $0.003000
+Monitored invocation: ./python_example.py -i
+Models: ['gpt-3.5-turbo-0301']
+Total Usage: {'total_prompt_tokens': 49, 'total_completion_tokens': 44, 'total_tokens': 93}
+Pricing: {'gpt-3.5-turbo-0301': {'prompt_cost': 0.002, 'completion_cost': 0.002, 'per_tokens': 1000}}
+Total Cost: $0.000186
 ================================================================================
+
+Writing cost summary to JSON file ... /tmp/tokmon_cost_summary_1681426650.json (run with --no_json to disable this behavior)
 ```
-- `tokmon` works for programs in `python` / `node` (using OpenAI's clients), or `curl` (run directly, and not i.e. in a bash script). 
+- `tokmon` works for programs in `python` / `node` (using OpenAI's clients), or `curl` (run directly, and not i.e. in a bash script).
+- If your program uses multiple OpenAI models in the same invocation, their respective usages will be reflected in the report
 - You can run multiple instances of `tokmon` simultaneously. Each invocation will generate a separate usage report.
+- Pass a `--json_out /your/path/report.json` to get a detailed breakdown + conversation history in JSON format.
 
 ## Install from source
 1. Clone the repository and `cd` to the project root.
