@@ -4,6 +4,10 @@
 
 You use `tokmon` just like you would use the `time` utility, but instead of execution time you get token usage and cost.
 
+<p align="center">
+<a href="https://asciinema.org/a/yFhnrxLIBzubqwl3rGl9vC5vm" target="_blank"><img src="https://asciinema.org/a/yFhnrxLIBzubqwl3rGl9vC5vm.svg" width="800"/></a>
+</p>
+
 ## How to use `tokmon`
 
 > **Warning**
