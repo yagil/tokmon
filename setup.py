@@ -8,6 +8,9 @@ setup(
         'mitmproxy',
         'tiktoken',
     ],
+    package_data={
+        "tokmon": ["pricing.json"],
+    },
     entry_points={
         'console_scripts': [
             "tokmon = tokmon.cli:cli",

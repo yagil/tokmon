@@ -2,6 +2,7 @@ import asyncio
 import argparse
 import json
 import sys
+import pkg_resources
 
 from tokmon.tokmon import TokenMonitor
 from typing import Dict
@@ -56,12 +57,15 @@ def cli():
 
     args = parser.parse_args()
 
-    if not args.program_name or not args.args:
+    if not args.program_name:
         parser.print_help()
         sys.exit(1)
 
     # Note, pricing data may go out of date
-    pricing = json.load(open("pricing.json", "r"))
+    pricing_json = pkg_resources.resource_filename("tokmon", "pricing.json")
+
+    with open(pricing_json, "r") as f:
+        pricing = json.load(f)
 
     monitored_prog = f"{args.program_name} { ' '.join(args.args) if args.args else ''}"
     model, usage_data, total_cost = None, None, 0
@@ -70,14 +74,16 @@ def cli():
     tokmon = TokenMonitor(OPENAI_API_PATH, pricing, args.program_name, *args.args)
 
     try:
-        print(f"[{PROG_NAME}] Monitoring program for token costs for {color(monitored_prog, GREEN)} ...")
+        monitoring_str = f"[{PROG_NAME}] Monitoring program for token costs for {color(monitored_prog, GREEN)} ..."
+        print(f"{color(monitoring_str, MAGENTA)}")
 
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
 
         loop.run_until_complete(tokmon.start_monitoring())
     except KeyboardInterrupt:
-        print(f"\n[{PROG_NAME}] Interrupted. Generating token usage report ...")
+        interrupted_str = f"\n[{PROG_NAME}] Interrupted. Generating token usage report ..."
+        print(f"{color(interrupted_str, MAGENTA)}")
     finally:
         tokmon.stop_monitoring()
         model, usage_data, total_cost = tokmon.calculate_usage()
@@ -86,7 +92,8 @@ def cli():
             report = generate_usage_report(monitored_invocation, model, usage_data, pricing, total_cost)
             print(f"\n{report}")
         else:
-            print(f"[{PROG_NAME}] No usage data available.")
+            status_str = f"[{PROG_NAME}] No OpenAI API calls detected for `{monitored_prog}`."
+            print(f"{color(status_str, MAGENTA)}")
 
 if __name__ == '__main__':
     cli()

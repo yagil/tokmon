@@ -4,6 +4,7 @@ import json
 import subprocess
 import typing
 import time
+import socket
 
 import tiktoken
 
@@ -12,7 +13,18 @@ from mitmproxy.tools.dump import DumpMaster
 
 from tokmon.costcalculator import CostCalculator
 
-PORT = 7878
+def find_available_port(start_port):
+    """
+    To allow multiple instances of tokmon to run concurrently.
+    """
+    port = start_port
+    while True:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            if s.connect_ex(('localhost', port)) != 0:
+                return port
+            port += 1
+
+PORT = find_available_port(7878)
 
 class TokenMonitor:
     def __init__(self, target_url, pricing, program_name, *args, verbose=False):
@@ -187,8 +199,10 @@ class TokenMonitor:
         """
         Returns the model and usage data for the given program name.
         """
-        if program_name not in self.usage_data:
-            raise Exception(f"Program {program_name} not found in usage data")
+        if program_name not in self.usage_data or \
+            program_name not in self.model:
+            raise Exception(f"No usage data for {program_name}.")
+        
         return self.model[self.program_name], self.usage_data[program_name]
     
     async def start_monitoring(self):        
@@ -202,7 +216,7 @@ class TokenMonitor:
             except KeyboardInterrupt:
                 pass
             except Exception as e:
-                print(e)
+                print(f"Exception while running mitmproxy: {e}")
             finally:
                 self.stop_monitoring()
 
@@ -219,7 +233,10 @@ class TokenMonitor:
         self.mitm.shutdown()
 
     def calculate_usage(self):
-        costCalculator = CostCalculator(self.pricing)
-        model, usage_data = self.token_usage(self.program_name)
-        total_cost = costCalculator.calculate_cost(model, usage_data)
-        return model, usage_data, total_cost
+        try:
+            costCalculator = CostCalculator(self.pricing)
+            model, usage_data = self.token_usage(self.program_name)
+            total_cost = costCalculator.calculate_cost(model, usage_data)
+            return model, usage_data, total_cost
+        except Exception as e:
+            return None, None, 0

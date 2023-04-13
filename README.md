@@ -33,14 +33,22 @@ Cost: $0.003000
 3. Run `tokmon` with your desired program and arguments (you may need to source your `.zshrc` / `.bashrc` file first).
 To uninstall, run `pip uninstall tokmon`
 
+## Run from the repo after cloning it
+```bash
+$ cd /path/to/tokmon
+$ python -m tokmon.cli <program to monitor> [arguments...]
+```
+
 ## How it works
-`tokmon` uses the [mitmproxy library](https://github.com/mitmproxy/mitmproxy) to intercept HTTP requests and responses between your program and the OpenAI API. It then processes the request and response data to calculate token usage and cost based on the provided pricing information (see [pricing.json](pricing.json) in this repo).
+`tokmon` uses the [mitmproxy library](https://github.com/mitmproxy/mitmproxy) to intercept HTTP requests and responses between your program and the OpenAI API. It then processes the request and response data to calculate token usage and cost based on the provided pricing information (see [tokmon/pricing.json](tokmon/pricing.json) in this repo).
 
 In most cases, `tokmon` relies on the `usage` field in OpenAI API respones in order to count token. For streaming requests, however, `tokmon` uses the OpenAI's [tiktoken library](https://github.com/openai/tiktoken) directly: as of writing OpenAI's API does not return usage data for streaming requests ([reference](https://community.openai.com/t/usage-info-in-api-responses/18862/11).)
 
 ## Current Limitations
 1. Event streaming: `tokmon` will override this setting and buffer Server-Sent Events (SSE) data chunks until the `data: [DONE]` chunk is received. If the monitored program leverages event streaming, its behavior will be modified.
     - Status: looking into it. Pull requests welcome.
+2. If your monitored program makes call more than 1 type of OpenAI models, your accounting will be incorrect.
+    - Status: it's on the list
 
 ## Contributing
 Help is wanted. If you'd like to contribute to the project, please follow these steps:
