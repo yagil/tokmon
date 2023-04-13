@@ -1,4 +1,4 @@
-# 🔤🧐 `tokmon` - CLI utility to monitor OpenAI token costs
+# `tokmon` 🔤🧐 - CLI utility to monitor OpenAI token costs
 
 `tokmon` enables you to monitor your program's OpenAI API token usage.
 
