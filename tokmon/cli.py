@@ -2,10 +2,13 @@ import asyncio
 import argparse
 import json
 import sys
+import os
 import pkg_resources
+import time
+from typing import List, Tuple, Dict
 
 from tokmon.tokmon import TokenMonitor
-from typing import Dict
+from tokmon.costcalculator import CostCalculator
 
 PROG_NAME = "tokmon"
 
@@ -24,8 +27,11 @@ def color(s:str, color:str, bold:bool = True):
     else:
         return f"{color}{s}{RESET}"
 
-def generate_usage_report(monitored_invocation:str ,model:str, usage_data:Dict, pricing:Dict, total_cost:float):
-    model_pricing = pricing[model]
+def generate_usage_report(monitored_invocation:str, cost_summary: Dict):
+    models = cost_summary["models"]
+    pricing = cost_summary["pricing_data"]
+    total_cost = cost_summary["total_cost"]
+    total_usage = cost_summary["total_usage"]
 
     cost_str = f"${total_cost:.6f}"
     report_header = f"{PROG_NAME} cost report:"
@@ -34,10 +40,10 @@ def generate_usage_report(monitored_invocation:str ,model:str, usage_data:Dict, 
 {color(report_header, GREEN)}
 {color('='*80, GRAY, bold=False)}
 {bold("Monitored invocation")}: {monitored_invocation}
-{bold("Model")}: {model}
-{bold("Usage")}: {usage_data}
-{bold("Pricing")}: {model_pricing}
-{color("Cost", MAGENTA)}: {color(cost_str, MAGENTA)}
+{bold("Models")}: {models}
+{bold("Total Usage")}: {total_usage}
+{bold("Pricing")}: {pricing}
+{color("Total Cost", MAGENTA)}: {color(cost_str, MAGENTA)}
 {color('='*80, GRAY, bold=False)}
 """
 
@@ -52,12 +58,16 @@ def cli():
     parser = argparse.ArgumentParser(description="A utility to monitor OpenAI token cost of a target program.",
                                      add_help=False)
 
+    current_time = int(time.time())
+    default_json_out = os.path.join("/tmp", f"tokmon_cost_summary_{current_time}.json")
+
     parser.add_argument("program_name", nargs="?", help="The name of the monitored program")
     parser.add_argument("args", nargs=argparse.REMAINDER, help="The command and arguments to run the monitored program")
     parser.add_argument("-p", "--pricing", type=str, help="Path to a custom pricing JSON file", default=None)
+    parser.add_argument("-v", "--verbose", action="store_true", help="Print verbose output")
+    parser.add_argument("-j", "--json_out", type=str, help="Path to a JSON file to write the cost summary to. Saves to /tmp by default", default=default_json_out)
+    parser.add_argument("-n", "--no_json", action="store_true", help="Do not write a cost summary to a JSON file")
     parser.add_argument("-h", "--help", action="help", help="Show this help message and exit")
-
-
 
     args = parser.parse_args()
 
@@ -75,10 +85,10 @@ def cli():
         pricing = json.load(f)
 
     monitored_prog = f"{args.program_name} { ' '.join(args.args) if args.args else ''}"
-    model, usage_data, total_cost = None, None, 0
 
     # Instantiate the token monitor
-    tokmon = TokenMonitor(OPENAI_API_PATH, pricing, args.program_name, *args.args)
+    tokmon = TokenMonitor(OPENAI_API_PATH, args.program_name, *args.args, verbose=args.verbose)
+    cost_summary = {}
 
     try:
         monitoring_str = f"[{PROG_NAME}] Monitoring program for token costs for {color(monitored_prog, GREEN)} ..."
@@ -93,14 +103,26 @@ def cli():
         print(f"{color(interrupted_str, MAGENTA)}")
     finally:
         tokmon.stop_monitoring()
-        model, usage_data, total_cost = tokmon.calculate_usage()
-        if model and usage_data:
-            monitored_invocation = [args.program_name] + [arg for arg in args.args]
-            report = generate_usage_report(monitored_invocation, model, usage_data, pricing, total_cost)
+        usage_summary = tokmon.usage_summary()
+        
+        if len(usage_summary) > 0:
+            cost_summary = calculate(usage_summary, pricing)
+            report = generate_usage_report(monitored_prog, cost_summary)
             print(f"\n{report}")
         else:
             status_str = f"[{PROG_NAME}] No OpenAI API calls detected for `{monitored_prog}`."
             print(f"{color(status_str, MAGENTA)}")
+
+        if args.json_out and not args.no_json:
+            print(f"Writing cost summary to JSON file ... {color(args.json_out, GREEN)} {color('(run with --no_json to disable this behavior)', GRAY)}")
+            with open(args.json_out, "w") as f:
+                json.dump(cost_summary, f, indent=4)
+            
+
+def calculate(usage_summary: List[Tuple[Dict, Dict]], pricing: Dict):
+    costCalculator = CostCalculator(pricing)
+    usage_with_cost = costCalculator.calculate_cost(usage_summary)
+    return usage_with_cost
 
 if __name__ == '__main__':
     cli()

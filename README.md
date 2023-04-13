@@ -82,8 +82,6 @@ You can override the default pricing with: `tokmon --pricing /path/to/your/custo
 ## Current Limitations
 1. Event streaming: `tokmon` buffers Server-Sent Events (SSE) until the `data: [DONE]` chunk is received. If the monitored program leverages event streaming, its behavior will be modified.
     - Status: looking into it. Pull requests welcome.
-2. If your monitored program makes calls to more than 1 type of OpenAI models, your accounting will be incorrect (e.g. both gpt-3.5-turbo and gpt-4 at the same program.)
-    - Status: it's on the list.
 
 ## Contributing
 If you'd like to contribute to the project, please follow these steps:

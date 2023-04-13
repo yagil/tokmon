@@ -5,15 +5,14 @@ import subprocess
 import typing
 import time
 import socket
+from typing import Callable, Any, List, Tuple, Dict
 
 import tiktoken
 
 from mitmproxy import http, options
 from mitmproxy.tools.dump import DumpMaster
 
-from tokmon.costcalculator import CostCalculator
-
-def find_available_port(start_port):
+def find_available_port(start_port: int):
     """
     To allow multiple instances of tokmon to run concurrently.
     """
@@ -24,22 +23,43 @@ def find_available_port(start_port):
                 return port
             port += 1
 
+def count_tokens_in_json(encode_fn: Callable[[str], List[str]], data: Any) -> int:
+    print(f"count_tokens_in_json called with data: {data}, encode_fn: {encode_fn}")
+    token_count = 0
+    stack = [data]
+
+    while stack:
+        current = stack.pop()
+
+        if isinstance(current, dict):
+            for key, value in current.items(): # 'key' is unused
+                # empricially, the keys seem to not be counted towards the token count
+                # so we are not including this `token_count += count_tokens(key)`
+                stack.append(value)
+        elif isinstance(current, list):
+            stack.extend(current)
+        elif isinstance(current, str):
+            token_count += len(encode_fn(current))
+        else:
+            token_count += len(encode_fn( str(current) ) )
+
+    return token_count
+
 PORT = find_available_port(7878)
 
 class TokenMonitor:
-    def __init__(self, target_url, pricing, program_name, *args, verbose=False):
+    def __init__(self, target_url: str, program_name: str, *args: tuple, verbose:bool = False):
         self.mitm = None
         self.target_url = target_url
         self.program_name = program_name
         self.args = args
-        self.pricing = pricing
         self.process = None
-        self.usage_data = {program_name: {}}
         self.using_stream = False
-        self.tokenizer = None
-        self.model = {} # { program_name: model}
         self.verbose = verbose
+        self.history: List[Tuple[Dict, Dict]] = []
+        self.current_request = None
 
+    # For handling streaming requests:
     # def responseheaders(self, flow: http.HTTPFlow):
     #     if self.target_url in flow.request.pretty_url:
     #         content_type = flow.response.headers.get("Content-Type", "")
@@ -55,15 +75,16 @@ class TokenMonitor:
     def handle_request(self, flow: http.HTTPFlow):
         if self.target_url in flow.request.pretty_url:
             try:
+                if self.current_request is not None:
+                    print("Warning: multiple requests in flight. This is not supported.")
+                
                 request_data = json.loads(flow.request.content)
+                self.current_request = request_data
+
                 if self.verbose:
                     print(request_data)
-                self.model[self.program_name] = request_data["model"]
+                
                 self.using_stream = request_data["stream"]
-
-                if self.using_stream:
-                    self.init_tokenizer_if_needed(self.model[self.program_name])
-                    self.accumulate_stream_request_tokens(request_data)
 
             except json.JSONDecodeError:
                 print("Failed to parse request data as JSON")
@@ -72,14 +93,33 @@ class TokenMonitor:
         if not flow.request.url.startswith(self.target_url):
             return
     
+        model = ""
+        content = ""
+        usage = None
+
         if flow.response.text:
             if self.using_stream:
-                self.accumulate_stream_response_tokens(flow.response.text)
+                model, content, usage = self.handle_stream_response(flow.response.text)
             else:    
                 response_data = json.loads(flow.response.text)
-                self.usage_data[self.program_name] = response_data["usage"]
+                model = response_data["model"]
+                content = response_data["choices"][0]["message"]["content"]
+                usage = response_data["usage"]
         else:
             raise Exception("No response data")
+        
+        request = self.current_request
+        response = {
+            "model": model,
+            "messages": [{"role": "assistant", "content": content}],
+            "usage": usage
+        }
+
+        self.history.append((request, response))
+        self.current_request = None
+
+        if self.verbose:
+            print(response)
 
     async def run_monitored_program(self):
         env = os.environ.copy()
@@ -114,53 +154,14 @@ class TokenMonitor:
             
         self.process = subprocess.Popen([self.program_name] + args, env=env)
     
-    def init_tokenizer_if_needed(self, model):
+    def encode(self, model, text):
         """
         Learn more: https://github.com/openai/tiktoken
         """
-        if self.tokenizer is None:
-            self.tokenizer = tiktoken.encoding_for_model(model)
-            if self.verbose:
-                print(f"Initialized tokenizer for model {model}. Tokenizer: {self.tokenizer}")
-            assert self.tokenizer.decode(self.tokenizer.encode("hello world")) == "hello world"
+        tokenizer = tiktoken.encoding_for_model(model)
+        return tokenizer.encode(text)
 
-    def accumulate_stream_request_tokens(self, request_data):
-        """
-        Accumulate request costs for streaming requests.
-        """
-        assert self.using_stream
-        assert self.tokenizer is not None
-
-        def count_tokens(text):
-            return len(self.tokenizer.encode(text))
-
-        def count_tokens_in_json(data):
-            token_count = 0
-            stack = [data]
-
-            while stack:
-                current = stack.pop()
-
-                if isinstance(current, dict):
-                    for key, value in current.items():
-                        # empricially, the keys seem to not be counted towards the token count
-                        # so we are not including this `token_count += count_tokens(key)`
-                        stack.append(value)
-                elif isinstance(current, list):
-                    stack.extend(current)
-                elif isinstance(current, str):
-                    token_count += count_tokens(current)
-                else:
-                    token_count += count_tokens(str(current))
-
-            return token_count
-
-        tokens = count_tokens_in_json(request_data)
-        if self.verbose:
-            print(f"Accumulating {tokens} tokens for prompt")
-        self.usage_data[self.program_name]["prompt_tokens"] = tokens
-
-    def accumulate_stream_response_tokens(self, raw_messages: typing.List[str]):
+    def handle_stream_response(self, raw_messages: typing.List[str]):
         """
         When streaming, OpenAI's API doesn't return usage data.
         To work around this, we use tiktoken directly.
@@ -168,9 +169,12 @@ class TokenMonitor:
         See: https://community.openai.com/t/usage-info-in-api-responses/18862/11
         """
         
+        assert self.current_request is not None
+
         model = None
 
         completion_tokens = 0
+        completion_content = ""
 
         # mitmproxy buffers the returned SSE chunks as one big string
         for msg in raw_messages.split("\n"):
@@ -181,15 +185,13 @@ class TokenMonitor:
                         break
                     msg = json.loads(msg)
                     model = msg["model"]
-
-                    if self.tokenizer is None:
-                        self.init_tokenizer_if_needed(model)
                     
                     choice = msg["choices"][0]
                     if "delta" in choice:
                         if "content" in choice["delta"]:
                             tokens = choice["delta"]["content"]
-                            encoded_tokens = self.tokenizer.encode(tokens)
+                            completion_content += tokens
+                            encoded_tokens = self.encode(model, tokens)
                             completion_tokens += len(encoded_tokens)
 
                 except json.JSONDecodeError as e:
@@ -198,22 +200,17 @@ class TokenMonitor:
                     print(f"\n\n ! ! Failed to parse response data: {e} ! !\n\n")
                     raise e
         
-        assert "prompt_tokens" in self.usage_data[self.program_name]
-        prompt_tokens = self.usage_data[self.program_name]["prompt_tokens"]
+        encode_lambda = lambda text: self.encode(model, text)
+        prompt_tokens = count_tokens_in_json(encode_lambda, self.current_request)
         total_tokens = prompt_tokens + completion_tokens
         
-        self.usage_data[self.program_name]["completion_tokens"] = completion_tokens
-        self.usage_data[self.program_name]["total_tokens"] = total_tokens
-
-    def token_usage(self, program_name):
-        """
-        Returns the model and usage data for the given program name.
-        """
-        if program_name not in self.usage_data or \
-            program_name not in self.model:
-            raise Exception(f"No usage data for {program_name}.")
-        
-        return self.model[self.program_name], self.usage_data[program_name]
+        # mimic the usage data returned by the API in the non streaming case
+        usage = {
+            "prompt_tokens": prompt_tokens,
+            "completion_tokens": completion_tokens,
+            "total_tokens": total_tokens
+        }
+        return model, completion_content, usage
     
     async def start_monitoring(self):        
         opts = options.Options(listen_host='0.0.0.0', listen_port=PORT)
@@ -242,11 +239,5 @@ class TokenMonitor:
         self.process.terminate()
         self.mitm.shutdown()
 
-    def calculate_usage(self):
-        try:
-            costCalculator = CostCalculator(self.pricing)
-            model, usage_data = self.token_usage(self.program_name)
-            total_cost = costCalculator.calculate_cost(model, usage_data)
-            return model, usage_data, total_cost
-        except Exception as e:
-            return None, None, 0
+    def usage_summary(self) -> List[Tuple[Dict, Dict]]:
+        return self.history
