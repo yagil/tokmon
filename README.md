@@ -13,9 +13,9 @@ Prepend `tokmon` to your normal program invocation like so:
 ```bash
 $ tokmon ./my_gpt_program --my_arg "hi"
 ```
-After this, use your program just like you would normally (interactive usage is supported as well).
+Run and use your program just like you would normally (with any arguments). Interactive usage is supported as well.
 
-After your program finishes running (or `ctrl^C` is pressed), `tokmon` will automatically generate a cost report that looks like this:
+After your program finishes running (or you `ctrl^C` it), `tokmon` will automatically generate a cost report that looks like this:
 
 ```yaml
 tokmon cost report:
@@ -28,25 +28,7 @@ Cost: $0.003000
 ================================================================================
 ```
 
-## Features
-1. Measure token usage (breakdown by `prompt`, and `completion`) and $ cost.
-2. You can run multiple instances of `tokmon` simultaenously
-3. Works for interactive scripts as well
-
-```zsh
-usage: tokmon [-p PRICING] [-h] [program_name] ...
-
-A utility to monitor OpenAI token cost of a target program.
-
-positional arguments:
-  program_name          The name of the monitored program
-  args                  The command and arguments to run the monitored program
-
-optional arguments:
-  -p PRICING, --pricing PRICING
-                        Path to a custom pricing JSON file
-  -h, --help            Show this help message and exit
-```
+- You can run multiple instances of `tokmon` simultaenously. Each invocation will generate a separate usage report.
 
 ## Install from source
 1. Clone the repository and `cd` to the project root.
@@ -56,22 +38,16 @@ optional arguments:
 To uninstall, run `pip uninstall tokmon`<br>
 Tip: make sure that the expected python Library route is in your `PATH`.
 
-## Run from the repo after cloning it
-```bash
-$ cd /path/to/tokmon
-$ python -m tokmon.cli <program to monitor> [arguments...]
-```
-
 ## How it works
 `tokmon` uses the [mitmproxy library](https://github.com/mitmproxy/mitmproxy) to intercept HTTP requests and responses between your program and the OpenAI API.
-It then processes the request and response data to calculate token usage and cost based on the provided pricing information (see [tokmon/pricing.json](tokmon/pricing.json) in this repo).
+It then processes the request and response data to calculate token usage and cost based on [tokmon/pricing.json](tokmon/pricing.json).
 
-In most cases, `tokmon` relies on the `usage` field in OpenAI API respones in order to count token. For streaming requests, however, `tokmon` uses the OpenAI's [tiktoken library](https://github.com/openai/tiktoken) directly: as of writing OpenAI's API does not return usage data for streaming requests ([reference](https://community.openai.com/t/usage-info-in-api-responses/18862/11).)
+In most cases, `tokmon` relies on the `usage` field in OpenAI's API respones for token counts. For streaming requests, however, `tokmon` uses OpenAI's [tiktoken library](https://github.com/openai/tiktoken) directly to count the tokens. As of writing OpenAI's API does not return usage data for streaming requests ([reference](https://community.openai.com/t/usage-info-in-api-responses/18862/11).)
 
-## Pricing data
+## pricing.json
 The pricing data was extracted from OpenAI's website with the help of ChatGPT.
 
-`tokmon` is using [tokmon/pricing.json](tokmon/pricing.json) from its package. You can override it like so: `tokmon --pricing /path/to/your/custom_pricing.json`
+`tokmon` is using [tokmon/pricing.json](tokmon/pricing.json) from its package. 
 
 ```json
 {   
@@ -94,18 +70,20 @@ The pricing data was extracted from OpenAI's website with the help of ChatGPT.
 }
 ```
 
-> This pricing JSON is incomplete (missing DALL-E, etc.), it may be incorrect, and/or it may go out of date.
+You can override the default pricing with: `tokmon --pricing /path/to/your/custom_pricing.json ...`
 
-> Make sure to always check that you have the latest version.
+> This pricing JSON is incomplete (missing DALL-E, etc.), it may be incorrect, and it may go out of date.
+
+> For best results, make sure to check that you have the latest pricing.
 
 ## Current Limitations
-1. Event streaming: `tokmon` will override this setting and buffer Server-Sent Events (SSE) data chunks until the `data: [DONE]` chunk is received. If the monitored program leverages event streaming, its behavior will be modified.
+1. Event streaming: `tokmon` buffers Server-Sent Events (SSE) until the `data: [DONE]` chunk is received. If the monitored program leverages event streaming, its behavior will be modified.
     - Status: looking into it. Pull requests welcome.
-2. If your monitored program makes call more than 1 type of OpenAI models, your accounting will be incorrect.
-    - Status: it's on the list
+2. If your monitored program makes calls to more than 1 type of OpenAI models, your accounting will be incorrect (e.g. both gpt-3.5-turbo and gpt-4 at the same program.)
+    - Status: it's on the list.
 
 ## Contributing
-Help is wanted. If you'd like to contribute to the project, please follow these steps:
+If you'd like to contribute to the project, please follow these steps:
 1. Fork the repository.
 2. Create a new branch for your changes.
 3. Make your changes and test them.
@@ -113,6 +91,6 @@ Help is wanted. If you'd like to contribute to the project, please follow these 
 
 ## Warning
 1. `tokmon` comes without any warranty or guarantee whatsoever.
-2. Tested on macOS only.
-3. This tool may not work as intended, have unknown side effects, and/or it may output incorrect information.
+2. `tokmon` was tested on macOS only.
+3. This tool may not work as intended, have unknown side effects, may output incorrect information, or not work at all.
 4. The pricing data in `pricing.json` may go out of date.
