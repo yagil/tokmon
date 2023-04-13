@@ -1,6 +1,6 @@
 # 🔤🧐 `tokmon` - CLI utility to monitor OpenAI API costs
 
-`tokmon` is a command-line utility that helps you monitor the token costs of your OpenAI API calls during development.
+`tokmon` enables you to monitor your program's OpenAI API token usage.
 
 You use `tokmon` just like you would use the `time` utility, but instead of execution time you get token usage and cost.
 
