@@ -28,7 +28,6 @@ Cost: $0.003000
 ================================================================================
 ```
 
-- `tokmon` works for any executable regardless of programming language (i.e. it will work on scripts or programs in `.js`, `.ts`, `.py`, `.go`, `.cpp` etc. etc.)
 - You can run multiple instances of `tokmon` simultaneously. Each invocation will generate a separate usage report.
 
 ## Install from source
@@ -78,9 +77,10 @@ You can override the default pricing with: `tokmon --pricing /path/to/your/custo
 > For best results, make sure to check that you have the latest pricing.
 
 ## Current Limitations
-1. Event streaming: `tokmon` buffers Server-Sent Events (SSE) until the `data: [DONE]` chunk is received. If the monitored program leverages event streaming, its behavior will be modified.
+1. `tokmon` currently only works for monitoring Python programs that use `Requests` (like OpenAI's client library)
+2. Event streaming: `tokmon` buffers Server-Sent Events (SSE) until the `data: [DONE]` chunk is received. If the monitored program leverages event streaming, its behavior will be modified.
     - Status: looking into it. Pull requests welcome.
-2. If your monitored program makes calls to more than 1 type of OpenAI models, your accounting will be incorrect (e.g. both gpt-3.5-turbo and gpt-4 at the same program.)
+3. If your monitored program makes calls to more than 1 type of OpenAI models, your accounting will be incorrect (e.g. both gpt-3.5-turbo and gpt-4 at the same program.)
     - Status: it's on the list.
 
 ## Contributing
