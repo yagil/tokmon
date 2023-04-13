@@ -1,7 +1,5 @@
 import unittest
-from unittest.mock import MagicMock
-from tokmon import TokenMonitor
-import json
+from tokmon.tokmon import TokenMonitor
 
 class TestTokenMonitor(unittest.TestCase):
 

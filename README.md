@@ -29,7 +29,7 @@ Cost: $0.003000
 
 ## Setup
 1. Clone the repository and navigate to the project directory.
-2. Install the package and its dependencies using `pip install .`.
+2. Install the package and its dependencies using `pip install .`
 3. Run `tokmon` with your desired program and arguments (you may need to source your `.zshrc` / `.bashrc` file first).
 
 ## How it works
