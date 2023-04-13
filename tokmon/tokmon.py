@@ -10,7 +10,7 @@ import tiktoken
 from mitmproxy import http, options
 from mitmproxy.tools.dump import DumpMaster
 
-from costcalculator import CostCalculator
+from tokmon.costcalculator import CostCalculator
 
 PORT = 7878
 

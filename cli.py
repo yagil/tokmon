@@ -4,7 +4,7 @@ import argparse
 import json
 import sys
 
-from tokmon import TokenMonitor
+from tokmon.tokmon import TokenMonitor
 from typing import Dict
 
 PROG_NAME = "tokmon"
