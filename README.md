@@ -7,7 +7,7 @@ You use `tokmon` just like you would use the `time` utility, but instead of exec
 ## How to use `tokmon`
 
 > **Warning**
-> This is a debugging tool. It is not intended to be used in any consequential setting. Use your best judgement, your're on your own!
+> This is a debugging tool. It is not intended to be used in any consequential setting. Use your best judgement, you're on your own!
 
 Prepend `tokmon` to your normal program invocation like so:
 ```bash
