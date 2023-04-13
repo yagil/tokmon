@@ -3,8 +3,9 @@
 `tokmon` enables you to monitor your program's OpenAI API token usage.
 
 You use `tokmon` just like you would use the `time` utility, but instead of execution time you get token usage and cost.
-
-[![asciicast](https://asciinema.org/a/C3sQYOxOPkQJDGPRRiY96nA5P.svg)](https://asciinema.org/a/C3sQYOxOPkQJDGPRRiY96nA5P)
+<p align="center">
+    <img src="https://user-images.githubusercontent.com/3611042/231833426-58194283-8760-4b85-ae7f-3451851c8af5.gif" width="700" />
+</p>
 
 ## How to use `tokmon`
 
