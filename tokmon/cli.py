@@ -54,6 +54,10 @@ def cli():
 
     parser.add_argument("program_name", nargs="?", help="The name of the monitored program")
     parser.add_argument("args", nargs=argparse.REMAINDER, help="The command and arguments to run the monitored program")
+    parser.add_argument("-p", "--pricing", type=str, help="Path to a custom pricing JSON file", default=None)
+    parser.add_argument("-h", "--help", action="help", help="Show this help message and exit")
+
+
 
     args = parser.parse_args()
 
@@ -61,8 +65,11 @@ def cli():
         parser.print_help()
         sys.exit(1)
 
-    # Note, pricing data may go out of date
-    pricing_json = pkg_resources.resource_filename("tokmon", "pricing.json")
+    # Note: pricing data may go out of date
+    if args.pricing:
+        pricing_json = args.pricing
+    else:
+        pricing_json = pkg_resources.resource_filename("tokmon", "pricing.json")
 
     with open(pricing_json, "r") as f:
         pricing = json.load(f)
