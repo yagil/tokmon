@@ -29,7 +29,7 @@ Cost: $0.003000
 ```
 
 - `tokmon` works for any executable regardless of programming language (i.e. it will work on scripts or programs in `.js`, `.ts`, `.py`, `.go`, `.cpp` etc. etc.)
-- You can run multiple instances of `tokmon` simultaenously. Each invocation will generate a separate usage report.
+- You can run multiple instances of `tokmon` simultaneously. Each invocation will generate a separate usage report.
 
 ## Install from source
 1. Clone the repository and `cd` to the project root.
@@ -43,7 +43,7 @@ Tip: make sure that the expected python Library route is in your `PATH`.
 `tokmon` uses the [mitmproxy library](https://github.com/mitmproxy/mitmproxy) to intercept HTTP requests and responses between your program and the OpenAI API.
 It then processes the request and response data to calculate token usage and cost based on [tokmon/pricing.json](tokmon/pricing.json).
 
-In most cases, `tokmon` relies on the `usage` field in OpenAI's API respones for token counts. For streaming requests, however, `tokmon` uses OpenAI's [tiktoken library](https://github.com/openai/tiktoken) directly to count the tokens. As of writing OpenAI's API does not return usage data for streaming requests ([reference](https://community.openai.com/t/usage-info-in-api-responses/18862/11).)
+In most cases, `tokmon` relies on the `usage` field in OpenAI's API responses for token counts. For streaming requests, however, `tokmon` uses OpenAI's [tiktoken library](https://github.com/openai/tiktoken) directly to count the tokens. As of writing OpenAI's API does not return usage data for streaming requests ([reference](https://community.openai.com/t/usage-info-in-api-responses/18862/11).)
 
 ## pricing.json
 The pricing data was extracted from OpenAI's website with the help of ChatGPT.

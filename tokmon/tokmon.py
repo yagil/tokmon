@@ -98,7 +98,7 @@ class TokenMonitor:
         ca_cert_file = "mitmproxy-ca-cert.pem"
         ca_cert_abs_path = os.path.join(mitmproxy_abs_path, ca_cert_file)
 
-        env["REQUESTS_CA_BUNDLE"] = ca_cert_abs_path
+        env["REQUESTS_CA_BUNDLE"] = ca_cert_abs_path # for monitored programs using Python's Requests Library
         env["HTTP_PROXY"] = f"http://localhost:{PORT}"
         env["HTTPS_PROXY"] = f"http://localhost:{PORT}"
             
