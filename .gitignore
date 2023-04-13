@@ -1,5 +1,7 @@
 .env
+build/
 ignore/
 *.pem
 venv/
 .DS_Store
+*.egg-info/

@@ -1,4 +1,3 @@
-#!venv/bin/python
 import asyncio
 import argparse
 import json
@@ -49,12 +48,17 @@ def cli():
     After te program has finished running, the {PROG_NAME} will print the total cost of the program.
     """
 
-    parser = argparse.ArgumentParser(description="A utility to monitor OpenAI token cost of a target program.")
+    parser = argparse.ArgumentParser(description="A utility to monitor OpenAI token cost of a target program.",
+                                     add_help=False)
 
-    parser.add_argument("program_name", help="The name of the monitored program")
+    parser.add_argument("program_name", nargs="?", help="The name of the monitored program")
     parser.add_argument("args", nargs=argparse.REMAINDER, help="The command and arguments to run the monitored program")
 
     args = parser.parse_args()
+
+    if not args.program_name or not args.args:
+        parser.print_help()
+        sys.exit(1)
 
     # Note, pricing data may go out of date
     pricing = json.load(open("pricing.json", "r"))

@@ -27,10 +27,11 @@ Cost: $0.003000
 ================================================================================
 ```
 
-## Setup
+## Install from source
 1. Clone the repository and navigate to the project directory.
 2. Install the package and its dependencies using `pip install .`
 3. Run `tokmon` with your desired program and arguments (you may need to source your `.zshrc` / `.bashrc` file first).
+To uninstall, run `pip uninstall tokmon`
 
 ## How it works
 `tokmon` uses the [mitmproxy library](https://github.com/mitmproxy/mitmproxy) to intercept HTTP requests and responses between your program and the OpenAI API. It then processes the request and response data to calculate token usage and cost based on the provided pricing information (see [pricing.json](pricing.json) in this repo).

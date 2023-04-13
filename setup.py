@@ -10,7 +10,7 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            "tokmon = cli:cli",
+            "tokmon = tokmon.cli:cli",
         ],
     },
 )
