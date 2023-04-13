@@ -1,3 +1,5 @@
+#!venv/bin/python
+
 import sys
 from typing import Optional
 import openai

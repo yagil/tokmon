@@ -3,13 +3,14 @@ import os
 import json
 import subprocess
 import typing
-import tiktoken
-from costcalculator import CostCalculator
+import time
 
-from typing import Optional, Dict
+import tiktoken
 
 from mitmproxy import http, options
 from mitmproxy.tools.dump import DumpMaster
+
+from costcalculator import CostCalculator
 
 PORT = 7878
 
@@ -31,7 +32,6 @@ class TokenMonitor:
     #     if self.target_url in flow.request.pretty_url:
     #         content_type = flow.response.headers.get("Content-Type", "")
     #         if "text/event-stream" in content_type:
-    #             # Set stream = False to buffer the response chunks
     #             flow.response.stream = True
 
     def request(self, flow: http.HTTPFlow):
@@ -69,21 +69,32 @@ class TokenMonitor:
         else:
             raise Exception("No response data")
 
-    def _run(self):
-        opts = options.Options(listen_host='0.0.0.0', listen_port=PORT)
-        self.mitm = DumpMaster(opts, with_termlog=False, with_dumper=False)
-        self.mitm.addons.add(self)
-
+    async def run_monitored_program(self):
         env = os.environ.copy()
+
+        # mitproxy automatically generates a CA cert and stores it in ~/.mitmproxy ...
+        mitmproxy_path = os.path.expanduser("~/.mitmproxy")
+        mitmproxy_abs_path = os.path.abspath(mitmproxy_path)
+        # ... but this coroutine might be called before mitmproxy has had a chance to generate the cert ... ¯\_(ツ)_/¯.
+        timeout_seconds = 2
+        start = time.time()
+        while not os.path.exists(mitmproxy_abs_path):
+            await asyncio.sleep(0.1) # yield to other coroutines
+            if time.time() - start > timeout_seconds:
+                raise Exception("\n\n*** Error: Cert file wasn't created in time. Try to run `mitmproxy` manually first, and then try running tokmon again.\n\n")
+
+        ca_cert_file = "mitmproxy-ca-cert.pem"
+        ca_cert_abs_path = os.path.join(mitmproxy_abs_path, ca_cert_file)
+
+        env["REQUESTS_CA_BUNDLE"] = ca_cert_abs_path
         env["HTTP_PROXY"] = f"http://localhost:{PORT}"
         env["HTTPS_PROXY"] = f"http://localhost:{PORT}"
-        env["REQUESTS_CA_BUNDLE"] = os.path.abspath("mitmproxy-ca-cert.pem")
-
+            
         self.process = subprocess.Popen([self.program_name] + [arg for arg in self.args], env=env)
     
     def init_tokenizer_if_needed(self, model):
         """
-        https://github.com/openai/tiktoken
+        Learn more: https://github.com/openai/tiktoken
         """
         if self.tokenizer is None:
             self.tokenizer = tiktoken.encoding_for_model(model)
@@ -181,7 +192,9 @@ class TokenMonitor:
         return self.model[self.program_name], self.usage_data[program_name]
     
     async def start_monitoring(self):        
-        self._run()
+        opts = options.Options(listen_host='0.0.0.0', listen_port=PORT)
+        self.mitm = DumpMaster(opts, with_termlog=False, with_dumper=False)
+        self.mitm.addons.add(self)
 
         async def run_mitmproxy():
             try:
@@ -194,6 +207,7 @@ class TokenMonitor:
                 self.stop_monitoring()
 
         async def wait_subprocess():
+            await self.run_monitored_program()
             while self.process.poll() is None:
                 await asyncio.sleep(1)
             self.stop_monitoring()

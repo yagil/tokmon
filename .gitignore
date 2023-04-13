@@ -2,3 +2,4 @@
 ignore/
 *.pem
 venv/
+.DS_Store

@@ -6,10 +6,11 @@ setup(
     packages=find_packages(),
     install_requires=[
         'mitmproxy',
+        'tiktoken',
     ],
     entry_points={
         'console_scripts': [
-            'cost=tokmon.cli:main',
+            "tokmon = cli:cli",
         ],
     },
 )

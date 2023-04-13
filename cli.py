@@ -1,3 +1,4 @@
+#!venv/bin/python
 import asyncio
 import argparse
 import json
@@ -65,7 +66,7 @@ def cli():
     tokmon = TokenMonitor(OPENAI_API_PATH, pricing, args.program_name, *args.args)
 
     try:
-        print(f"[{PROG_NAME}] Monitoring program for token costs {color(monitored_prog, GREEN)} ...")
+        print(f"[{PROG_NAME}] Monitoring program for token costs for {color(monitored_prog, GREEN)} ...")
 
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
