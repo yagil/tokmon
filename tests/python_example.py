@@ -1,4 +1,4 @@
-#!venv/bin/python
+#!/usr/bin/env python3
 
 import sys
 from typing import Optional
@@ -35,7 +35,7 @@ def main(model: str, prompt: Optional[str] = None, stream: bool = False):
                     tokens = choice["delta"]["content"]
                     print(tokens, end="", flush=True)
     else:
-        pass # don't print anything (for no reason)
+        print(call_res.choices[0].message.content)
 
 if __name__ == "__main__":
     # if sys.arv contains '--prompt' then run headless
