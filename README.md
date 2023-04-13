@@ -13,7 +13,7 @@ Prepend `tokmon` to your normal program invocation like so:
 ```bash
 $ tokmon ./my_gpt_program --my_arg "hi"
 ```
-Run and use your program just like you would normally (with any arguments). Interactive usage is supported as well.
+Run and use your program just like you would normally (arguments and all). Interactive usage is supported as well.
 
 After your program finishes running (or you `ctrl^C` it), `tokmon` will automatically generate a cost report that looks like this:
 
