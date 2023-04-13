@@ -98,11 +98,21 @@ class TokenMonitor:
         ca_cert_file = "mitmproxy-ca-cert.pem"
         ca_cert_abs_path = os.path.join(mitmproxy_abs_path, ca_cert_file)
 
-        env["REQUESTS_CA_BUNDLE"] = ca_cert_abs_path # for monitored programs using Python's Requests Library
+        # set the HTTP proxy environment variables
         env["HTTP_PROXY"] = f"http://localhost:{PORT}"
         env["HTTPS_PROXY"] = f"http://localhost:{PORT}"
+
+        # add `mitmproxy`'s CA cert to the environment variables of the monitored program
+        env["REQUESTS_CA_BUNDLE"] = ca_cert_abs_path # for monitored programs using Python's Requests Library
+        env["NODE_EXTRA_CA_CERTS"] = ca_cert_abs_path # for monitored programs using Node.js
+
+        if self.program_name == 'curl':
+            print()
+            args = ['--cacert', ca_cert_abs_path] + [arg for arg in self.args]
+        else:
+            args = [arg for arg in self.args]
             
-        self.process = subprocess.Popen([self.program_name] + [arg for arg in self.args], env=env)
+        self.process = subprocess.Popen([self.program_name] + args, env=env)
     
     def init_tokenizer_if_needed(self, model):
         """

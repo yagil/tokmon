@@ -77,7 +77,7 @@ You can override the default pricing with: `tokmon --pricing /path/to/your/custo
 > For best results, make sure to check that you have the latest pricing.
 
 ## Current Limitations
-1. `tokmon` currently only works for monitoring Python programs that use `Requests` (like OpenAI's client library)
+1. `tokmon` works for programs in `python` / `node` (using OpenAI's clients), or `curl` (run directly, and not i.e. in a bash script). 
 2. Event streaming: `tokmon` buffers Server-Sent Events (SSE) until the `data: [DONE]` chunk is received. If the monitored program leverages event streaming, its behavior will be modified.
     - Status: looking into it. Pull requests welcome.
 3. If your monitored program makes calls to more than 1 type of OpenAI models, your accounting will be incorrect (e.g. both gpt-3.5-turbo and gpt-4 at the same program.)
@@ -92,6 +92,6 @@ If you'd like to contribute to the project, please follow these steps:
 
 ## Warning
 1. `tokmon` comes without any warranty or guarantee whatsoever.
-2. `tokmon` was tested on macOS only.
+2. `tokmon` was tested on macOS only. It might not work on other platforms.
 3. This tool may not work as intended, have unknown side effects, may output incorrect information, or not work at all.
 4. The pricing data in `pricing.json` may go out of date.

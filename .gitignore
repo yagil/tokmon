@@ -5,3 +5,7 @@ ignore/
 venv/
 .DS_Store
 *.egg-info/
+tests/node_requestor.js
+tests/node_modules/
+tests/package.json
+tests/package-lock.json
