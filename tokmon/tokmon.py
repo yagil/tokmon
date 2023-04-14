@@ -24,7 +24,6 @@ def find_available_port(start_port: int):
             port += 1
 
 def count_tokens_in_json(encode_fn: Callable[[str], List[str]], data: Any) -> int:
-    print(f"count_tokens_in_json called with data: {data}, encode_fn: {encode_fn}")
     token_count = 0
     stack = [data]
 
