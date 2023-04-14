@@ -5,6 +5,7 @@ import subprocess
 import typing
 import time
 import socket
+import sys
 from typing import Callable, Any, List, Tuple, Dict
 
 import tiktoken
@@ -120,7 +121,7 @@ class TokenMonitor:
         if self.verbose:
             print(response)
 
-    async def run_monitored_program(self):
+    async def run_monitored_program(self) -> bool:
         env = os.environ.copy()
 
         # mitproxy automatically generates a CA cert and stores it in ~/.mitmproxy ...
@@ -150,8 +151,16 @@ class TokenMonitor:
             args = ['--cacert', ca_cert_abs_path] + [arg for arg in self.args]
         else:
             args = [arg for arg in self.args]
+
+        try:
+            self.process = subprocess.Popen([self.program_name] + args, env=env)
+            return True
+        except FileNotFoundError:
+            print(f"[tokmon] Error: Program not found '{self.program_name}'. Did you type its path and name correctly?")
+        except Exception as e:
+            print(e)
             
-        self.process = subprocess.Popen([self.program_name] + args, env=env)
+        return False
     
     def encode(self, model, text):
         """
@@ -227,15 +236,17 @@ class TokenMonitor:
                 self.stop_monitoring()
 
         async def wait_subprocess():
-            await self.run_monitored_program()
-            while self.process.poll() is None:
-                await asyncio.sleep(1)
+            success = await self.run_monitored_program()
+            if success:   
+                while self.process.poll() is None:
+                    await asyncio.sleep(1)
             self.stop_monitoring()
 
         await asyncio.gather(run_mitmproxy(), wait_subprocess())
     
     def stop_monitoring(self):
-        self.process.terminate()
+        if self.process:
+            self.process.terminate()
         self.mitm.shutdown()
 
     def usage_summary(self) -> List[Tuple[Dict, Dict]]:

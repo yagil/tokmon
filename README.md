@@ -30,7 +30,7 @@ Pricing: {'gpt-3.5-turbo-0301': {'prompt_cost': 0.002, 'completion_cost': 0.002,
 Total Cost: $0.000186
 ================================================================================
 
-Writing cost summary to JSON file ... /tmp/tokmon_cost_summary_1681426650.json
+Writing cost summary to JSON file: /tmp/tokmon_usage_summary_1681426650.json
 ```
 - `tokmon` works for programs in `python` / `node` (using OpenAI's clients), or `curl` (run directly, and not i.e. in a bash script).
 - If your program uses multiple OpenAI models in the same invocation, their respective usages will be reflected in the report.

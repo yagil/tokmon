@@ -27,7 +27,7 @@ def color(s:str, color:str, bold:bool = True):
     else:
         return f"{color}{s}{RESET}"
 
-def generate_usage_report(monitored_invocation:str, cost_summary: Dict):
+def print_usage_report(monitored_invocation:str, cost_summary: Dict):
     models = cost_summary["models"]
     pricing = cost_summary["pricing_data"]
     total_cost = cost_summary["total_cost"]
@@ -36,7 +36,7 @@ def generate_usage_report(monitored_invocation:str, cost_summary: Dict):
     cost_str = f"${total_cost:.6f}"
     report_header = f"{PROG_NAME} cost report:"
 
-    return f"""
+    print(f"""
 {color(report_header, GREEN)}
 {color('='*80, GRAY, bold=False)}
 {bold("Monitored invocation")}: {monitored_invocation}
@@ -45,7 +45,7 @@ def generate_usage_report(monitored_invocation:str, cost_summary: Dict):
 {bold("Pricing")}: {pricing}
 {color("Total Cost", MAGENTA)}: {color(cost_str, MAGENTA)}
 {color('='*80, GRAY, bold=False)}
-"""
+""")
 
 OPENAI_API_PATH = "https://api.openai.com"
 
@@ -54,12 +54,11 @@ def cli():
     The {PROG_NAME} utility can be used to monitor the cost of OpenAI API calls made by a program.
     After te program has finished running, the {PROG_NAME} will print the total cost of the program.
     """
-
     parser = argparse.ArgumentParser(description="A utility to monitor OpenAI token cost of a target program.",
                                      add_help=False)
 
     current_time = int(time.time())
-    default_json_out = os.path.join("/tmp", f"tokmon_cost_summary_{current_time}.json")
+    default_json_out = os.path.join("/tmp", f"{PROG_NAME}_usage_summary_{current_time}.json")
 
     parser.add_argument("program_name", nargs="?", help="The name of the monitored program")
     parser.add_argument("args", nargs=argparse.REMAINDER, help="The command and arguments to run the monitored program")
@@ -79,7 +78,7 @@ def cli():
     if args.pricing:
         pricing_json = args.pricing
     else:
-        pricing_json = pkg_resources.resource_filename("tokmon", "pricing.json")
+        pricing_json = pkg_resources.resource_filename(PROG_NAME, "pricing.json")
 
     with open(pricing_json, "r") as f:
         pricing = json.load(f)
@@ -88,10 +87,9 @@ def cli():
 
     # Instantiate the token monitor
     tokmon = TokenMonitor(OPENAI_API_PATH, args.program_name, *args.args, verbose=args.verbose)
-    cost_summary = {}
 
     try:
-        monitoring_str = f"[{PROG_NAME}] Monitoring program for token costs for {color(monitored_prog, GREEN)} ..."
+        monitoring_str = f"[{PROG_NAME}] Monitoring token usage for {color(monitored_prog, GREEN)} ..."
         print(f"{color(monitoring_str, MAGENTA)}")
 
         loop = asyncio.new_event_loop()
@@ -103,21 +101,25 @@ def cli():
         print(f"{color(interrupted_str, MAGENTA)}")
     finally:
         tokmon.stop_monitoring()
+        
+        # Get the usage summary
         usage_summary = tokmon.usage_summary()
         
-        if len(usage_summary) > 0:
-            cost_summary = calculate(usage_summary, pricing)
-            report = generate_usage_report(monitored_prog, cost_summary)
-            print(f"\n{report}")
-        else:
+        # If no usage was detected, print a message and exit
+        if len(usage_summary) == 0:
             status_str = f"[{PROG_NAME}] No OpenAI API calls detected for `{monitored_prog}`."
             print(f"{color(status_str, MAGENTA)}")
+            return
 
+        # Print usage report to the terminal
+        cost_summary = calculate(usage_summary, pricing)
+        print_usage_report(monitored_prog, cost_summary)
+
+        # Write usage report to a JSON file
         if args.json_out and not args.no_json:
-            print(f"Writing cost summary to JSON file ... {color(args.json_out, GREEN)} {color('(run with --no_json to disable this behavior)', GRAY)}")
+            print(f"Writing cost summary to JSON file: {color(args.json_out, GREEN)} {color('(run with --no_json to disable this behavior)', GRAY)}")
             with open(args.json_out, "w") as f:
                 json.dump(cost_summary, f, indent=4)
-            
 
 def calculate(usage_summary: List[Tuple[Dict, Dict]], pricing: Dict):
     costCalculator = CostCalculator(pricing)
