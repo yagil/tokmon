@@ -4,12 +4,20 @@ from typing import Optional
 import openai
 from dotenv import load_dotenv
 import os
+import signal
 
 load_dotenv()
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 messages = [{"role": "system", "content": "You're a helpful assistant."}]
+
+# catch ctrl c
+def signal_handler(sig, frame):
+    print("Exiting...")
+    sys.exit(0)
+
+signal.signal(signal.SIGINT, signal_handler)
 
 def main(model: str, prompt: Optional[str] = None, stream: bool = False, interactive: bool = False):
     if interactive:
@@ -34,15 +42,19 @@ def call_openai(model: str, prompt: Optional[str], stream: bool):
             temperature=0,
         )
     
+    gpt_response = ""
     if stream: # when stream is True, call_res is a generator
         for msg in call_res:
             choice = msg.choices[0]
             if "delta" in choice:
                 if "content" in choice["delta"]:
                     tokens = choice["delta"]["content"]
+                    gpt_response += tokens
                     print(tokens, end="", flush=True)
     else:
-        print(call_res.choices[0].message.content)
+        gpt_response = call_res.choices[0].message.content
+        print(gpt_response)
+    messages.append({"role": "assistant", "content": gpt_response})
 
 if __name__ == "__main__":
     # if sys.arv contains '--prompt' then run headless
