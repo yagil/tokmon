@@ -4,7 +4,7 @@
 
 You use `tokmon` just like you would use the `time` utility, but instead of execution time you get token usage and cost.
 <p align="center">
-    <img src="https://user-images.githubusercontent.com/3611042/231910274-3872e13f-d9e6-4752-bc89-44e5d334e21f.gif" width="950" />
+    <img src="https://user-images.githubusercontent.com/3611042/231910274-3872e13f-d9e6-4752-bc89-44e5d334e21f.gif" />
 </p>
 
 ## How to use `tokmon`
@@ -32,7 +32,6 @@ Total Cost: $0.000186
 
 Writing cost summary to JSON file: /tmp/tokmon_usage_summary_1681426650.json
 ```
-- `tokmon` works for programs in `python` / `node` (using OpenAI's clients), or `curl` (run directly, and not i.e. in a bash script).
 - If your program uses multiple OpenAI models in the same invocation, their respective usages will be reflected in the report.
 - You can run multiple instances of `tokmon` simultaneously. Each invocation will generate a separate usage report.
 - Pass a `--json_out /your/path/report.json` to get a detailed breakdown + conversation history in JSON format.
@@ -50,6 +49,10 @@ Tip: make sure that the your python Library route is in your `PATH`.
 ## How it works
 `tokmon` uses the [mitmproxy library](https://github.com/mitmproxy/mitmproxy) to intercept HTTP requests and responses between your program and the OpenAI API.
 It then processes the request and response data to calculate token usage and cost based on [tokmon/pricing.json](tokmon/pricing.json).
+
+> `tokmon` works for programs in `python` / `node` (using OpenAI's clients), or `curl` (run directly, and not i.e. in a bash script).
+
+> if you [manually install `mitmproxy`'s CA certificate](https://docs.mitmproxy.org/stable/concepts-certificates/#:~:text=Go%20to%20Settings%20%3E%20General%20%3E%20About,trust%20for%20the%20mitmproxy%20certificate), it should work for all executables (note: haven't tested this.)
 
 In most cases, `tokmon` relies on the `usage` field in OpenAI's API responses for token counts. For streaming requests, however, `tokmon` uses OpenAI's [tiktoken library](https://github.com/openai/tiktoken) directly to count the tokens. As of writing OpenAI's API does not return usage data for streaming requests ([reference](https://community.openai.com/t/usage-info-in-api-responses/18862/11).)
 
