@@ -30,26 +30,22 @@ Pricing: {'gpt-3.5-turbo-0301': {'prompt_cost': 0.002, 'completion_cost': 0.002,
 Total Cost: $0.000186
 ================================================================================
 
-Writing cost summary to JSON file ... /tmp/tokmon_cost_summary_1681426650.json (run with --no_json to disable this behavior)
+Writing cost summary to JSON file ... /tmp/tokmon_cost_summary_1681426650.json
 ```
 - `tokmon` works for programs in `python` / `node` (using OpenAI's clients), or `curl` (run directly, and not i.e. in a bash script).
-- If your program uses multiple OpenAI models in the same invocation, their respective usages will be reflected in the report
+- If your program uses multiple OpenAI models in the same invocation, their respective usages will be reflected in the report.
 - You can run multiple instances of `tokmon` simultaneously. Each invocation will generate a separate usage report.
 - Pass a `--json_out /your/path/report.json` to get a detailed breakdown + conversation history in JSON format.
 
 ## Quick install
 Install using `pip` like so:
 ```
-pip install git+https://github.com/yagil/tokmon.git
+$ pip install git+https://github.com/yagil/tokmon.git
+$ tokmon --help
 ```
 
-## Install from source
-1. Clone the repository and `cd` to the project root.
-2. Install the package and its dependencies using `pip install .`
-3. You're ready to use `tokmon` (sourcing your terminal might be required).
-
 To uninstall, run `pip uninstall tokmon`<br>
-Tip: make sure that the expected python Library route is in your `PATH`.
+Tip: make sure that the your python Library route is in your `PATH`.
 
 ## How it works
 `tokmon` uses the [mitmproxy library](https://github.com/mitmproxy/mitmproxy) to intercept HTTP requests and responses between your program and the OpenAI API.
