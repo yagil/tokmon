@@ -4,7 +4,7 @@
 
 You use `tokmon` just like you would use the `time` utility, but instead of execution time you get token usage and cost.
 <p align="center">
-    <img src="https://user-images.githubusercontent.com/3611042/231833426-58194283-8760-4b85-ae7f-3451851c8af5.gif" width="700" />
+    <img src="https://user-images.githubusercontent.com/3611042/231910274-3872e13f-d9e6-4752-bc89-44e5d334e21f.gif" width="950" />
 </p>
 
 ## How to use `tokmon`
