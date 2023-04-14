@@ -37,6 +37,12 @@ Writing cost summary to JSON file ... /tmp/tokmon_cost_summary_1681426650.json (
 - You can run multiple instances of `tokmon` simultaneously. Each invocation will generate a separate usage report.
 - Pass a `--json_out /your/path/report.json` to get a detailed breakdown + conversation history in JSON format.
 
+## Quick install
+Install using `pip` like so:
+```
+pip install git+https://github.com/yagil/tokmon.git
+```
+
 ## Install from source
 1. Clone the repository and `cd` to the project root.
 2. Install the package and its dependencies using `pip install .`
