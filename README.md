@@ -7,6 +7,16 @@ You use `tokmon` just like you would use the `time` utility, but instead of exec
     <img src="https://user-images.githubusercontent.com/3611042/231910274-3872e13f-d9e6-4752-bc89-44e5d334e21f.gif" />
 </p>
 
+## Quick install
+Install using `pip` like so:
+```
+$ pip install git+https://github.com/yagil/tokmon.git
+$ tokmon --help
+```
+
+To uninstall, run `pip uninstall tokmon`<br>
+Tip: make sure that the your python Library route is in your `PATH`.
+
 ## How to use `tokmon`
 
 > **Warning**
@@ -20,6 +30,7 @@ Run and use your program just like you would normally (arguments and all). Inter
 
 After your program finishes running (or you `ctrl^C` it), `tokmon` will automatically generate a cost report that looks like this:
 
+### Short usage summary
 ```yaml
 tokmon cost report:
 ================================================================================
@@ -36,15 +47,47 @@ Writing cost summary to JSON file: /tmp/tokmon_usage_summary_1681426650.json
 - You can run multiple instances of `tokmon` simultaneously. Each invocation will generate a separate usage report.
 - Pass a `--json_out /your/path/report.json` to get a detailed breakdown + conversation history in JSON format.
 
-## Quick install
-Install using `pip` like so:
-```
-$ pip install git+https://github.com/yagil/tokmon.git
-$ tokmon --help
-```
+### Full usage and cost summary (JSON)
 
-To uninstall, run `pip uninstall tokmon`<br>
-Tip: make sure that the your python Library route is in your `PATH`.
+```json
+{
+    "total_cost": 0.0019199999999999998,
+    "total_usage": {
+        "total_prompt_tokens": 18,
+        "total_completion_tokens": 23,
+        "total_tokens": 41
+    },
+    "pricing_data": "{'gpt-4-0314': {'prompt_cost': 0.03, 'completion_cost': 0.06, 'per_tokens': 1000}}",
+    "models": [
+        "gpt-4-0314"
+    ],
+    "raw_data": [
+        {
+            "model": "gpt-4-0314",
+            "usage": {
+                "prompt_tokens": 18,
+                "completion_tokens": 23,
+                "total_tokens": 41
+            },
+            "cost": 0.0019199999999999998,
+            "messages": [
+                {
+                    "role": "system",
+                    "content": "You're a helpful assistant."
+                },
+                {
+                    "role": "user",
+                    "content": "hello"
+                },
+                {
+                    "role": "assistant",
+                    "content": "Hello! How can I help you today? If you have any questions or need assistance, feel free to ask."
+                }
+            ]
+        }
+    ]
+}
+```
 
 ## How it works
 `tokmon` uses the [mitmproxy library](https://github.com/mitmproxy/mitmproxy) to intercept HTTP requests and responses between your program and the OpenAI API.
