@@ -8,14 +8,16 @@ You use `tokmon` just like you would use the `time` utility, but instead of exec
 </p>
 
 ## Quick install
-Install using `pip` like so:
 ```
-$ pip install git+https://github.com/yagil/tokmon.git
-$ tokmon --help
+pip install tokmon
+```
+
+Make sure installation worked by running
+```
+tokmon --help
 ```
 
 To uninstall, run `pip uninstall tokmon`<br>
-Tip: make sure that the your python Library route is in your `PATH`.
 
 ## How to use `tokmon`
 
