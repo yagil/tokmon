@@ -32,7 +32,7 @@ jobs:
         pip install setuptools wheel twine bump2version
 
     - name: Bump version
-      run: bump2version --allow-dirty patch setup.py
+      run: bump2version patch
 
     - name: Build package
       run: python setup.py sdist bdist_wheel
