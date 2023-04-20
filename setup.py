@@ -21,6 +21,12 @@ setup(
             "tokmon = tokmon.cli:cli",
         ],
     },
+    description = "tokmon is a CLI utility to monitor OpenAI token usage and costs",
     long_description=long_description,
     long_description_content_type="text/markdown",
+    url="https://github.com/yagil/tokmon",
+        project_urls={  # Optional
+        "Bug Reports": "https://github.com/yagil/tokmon/issues",
+        "Source": "https://github.com/yagil/tokmon/",
+    },
 )
