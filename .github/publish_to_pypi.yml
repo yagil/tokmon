@@ -1,0 +1,44 @@
+name: Publish to PyPI
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'README.md'
+      - '.gitignore'
+      - 'tests/**'
+  pull_request:
+    branches:
+      - main
+    paths-ignore:
+      - '**'
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check out repository
+      uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.x
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install setuptools wheel twine bump2version
+
+    - name: Bump version
+      run: bump2version --allow-dirty patch setup.py
+
+    - name: Build package
+      run: python setup.py sdist bdist_wheel
+
+    - name: Publish to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        user: __token__
+        password: ${{ secrets.PYPI_API_TOKEN }}
