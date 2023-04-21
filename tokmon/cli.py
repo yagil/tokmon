@@ -48,6 +48,7 @@ def print_usage_report(monitored_invocation:str, cost_summary: Dict):
 """)
 
 OPENAI_API_PATH = "https://api.openai.com"
+DEFAULT_JSON_OUT_PATH = "/tmp"
 
 def cli():
     """
@@ -62,23 +63,28 @@ def cli():
 
     parser.add_argument("program_name", nargs="?", help="The name of the monitored program")
     parser.add_argument("args", nargs=argparse.REMAINDER, help="The command and arguments to run the monitored program")
-    parser.add_argument("-p", "--pricing", type=str, help="Path to a custom pricing JSON file", default=None)
+    parser.add_argument("-p", "--pricing", type=str, help="Path to a custom OpenAI pricing JSON file", default=None)
     parser.add_argument("-v", "--verbose", action="store_true", help="Print verbose output")
-    parser.add_argument("-j", "--json_out", type=str, help="Path to a JSON file to write the cost summary to. Saves to /tmp by default", default=default_json_out)
+    parser.add_argument("-j", "--json_out", type=str, help="Path to a JSON file to write the cost summary to. Saves to /tmp by default", default=DEFAULT_JSON_OUT_PATH)
     parser.add_argument("-n", "--no_json", action="store_true", help="Do not write a cost summary to a JSON file")
     parser.add_argument("-h", "--help", action="help", help="Show this help message and exit")
 
     args = parser.parse_args()
 
+ 
+    if args.json_out and args.no_json:
+        parser.error("Cannot use --json_out and --no_json together")
+        sys.exit(1)
+
     if not args.program_name:
         parser.print_help()
         sys.exit(1)
 
-    # Note: pricing data may go out of date
+    # Note: openai-pricing data may go out of date
     if args.pricing:
         pricing_json = args.pricing
     else:
-        pricing_json = pkg_resources.resource_filename(PROG_NAME, "pricing.json")
+        pricing_json = pkg_resources.resource_filename(PROG_NAME, "openai-pricing.json")
 
     with open(pricing_json, "r") as f:
         pricing = json.load(f)
@@ -117,9 +123,15 @@ def cli():
 
         # Write usage report to a JSON file
         if args.json_out and not args.no_json:
-            print(f"Writing cost summary to JSON file: {color(args.json_out, GREEN)} {color('(run with --no_json to disable this behavior)', GRAY)}")
-            with open(args.json_out, "w") as f:
-                json.dump(cost_summary, f, indent=4)
+            json_out_filename = f"{PROG_NAME}_usage_summary_{current_time}.json"
+            out_dir_path = args.json_out
+            if not os.path.exists(out_dir_path):
+                print(f"** Path does not exist: {out_dir_path}, falling back to {DEFAULT_JSON_OUT_PATH}")
+                out_dir_path = DEFAULT_JSON_OUT_PATH
+            json_out_path = os.path.join(out_dir_path, f"{json_out_filename}")
+            print(f"Writing cost summary to JSON file: {color(json_out_path, GREEN)} {color('(run with --no_json to disable this behavior)', GRAY)}")
+            with open(json_out_path, "w") as f:
+                 json.dump(cost_summary, f, indent=4)
 
 def calculate(usage_summary: List[Tuple[Dict, Dict]], pricing: Dict):
     costCalculator = CostCalculator(pricing)

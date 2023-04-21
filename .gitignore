@@ -10,3 +10,5 @@ tests/node_example.js
 tests/node_modules/
 tests/package.json
 tests/package-lock.json
+__pycache__/
+tokmon_usage_summary_*.json
