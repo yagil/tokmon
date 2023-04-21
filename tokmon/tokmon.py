@@ -5,7 +5,6 @@ import subprocess
 import typing
 import time
 import socket
-import sys
 from typing import Callable, Any, List, Tuple, Dict
 
 import tiktoken

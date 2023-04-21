@@ -14,7 +14,7 @@ setup(
         'tiktoken',
     ],
     package_data={
-        "tokmon": ["pricing.json"],
+        "tokmon": ["openai-pricing.json"],
     },
     entry_points={
         'console_scripts': [

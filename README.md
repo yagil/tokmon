@@ -19,7 +19,25 @@ tokmon --help
 
 To uninstall, run `pip uninstall tokmon`<br>
 
-## How to use `tokmon`
+## Try it out
+
+
+```bash
+
+# Install tokmon
+pip install tokmon
+
+# Clone this repo and `cd` into the `tokmon` folder
+git clone https://github.com/yagil/tokmon.git && cd tokmon
+
+# This will be used in the test program (source in ./tests/python_example.py)
+export OPENAI_API_KEY="YOUR_OPENAI_API_KEY" 
+
+# Run tokmon
+tokmon --json_out=. python3 ./tests/python_example.py --prompt "say 'hello, tokmon!'"
+```
+
+## Use `tokmon` with your application or script
 
 > **Warning**
 > This is a debugging tool. It is not intended to be used in any consequential setting. Use your best judgement, you're on your own!
@@ -93,7 +111,7 @@ Writing cost summary to JSON file: /tmp/tokmon_usage_summary_1681426650.json
 
 ## How it works
 `tokmon` uses the [mitmproxy library](https://github.com/mitmproxy/mitmproxy) to intercept HTTP requests and responses between your program and the OpenAI API.
-It then processes the request and response data to calculate token usage and cost based on [tokmon/pricing.json](tokmon/pricing.json).
+It then processes the request and response data to calculate token usage and cost based on [tokmon/openai-pricing.json](tokmon/openai-pricing.json).
 
 > `tokmon` works for programs in `python` / `node` (using OpenAI's clients), or `curl` (run directly, and not i.e. in a bash script).
 
@@ -101,10 +119,10 @@ It then processes the request and response data to calculate token usage and cos
 
 In most cases, `tokmon` relies on the `usage` field in OpenAI's API responses for token counts. For streaming requests, however, `tokmon` uses OpenAI's [tiktoken library](https://github.com/openai/tiktoken) directly to count the tokens. As of writing OpenAI's API does not return usage data for streaming requests ([reference](https://community.openai.com/t/usage-info-in-api-responses/18862/11).)
 
-## pricing.json
+## openai-pricing.json
 The pricing data was extracted from OpenAI's website with the help of ChatGPT.
 
-`tokmon` is using [tokmon/pricing.json](tokmon/pricing.json) from its package. 
+`tokmon` is using [tokmon/openai-pricing.json](tokmon/openai-pricing.json) from its package. 
 
 ```json
 {   
@@ -127,7 +145,7 @@ The pricing data was extracted from OpenAI's website with the help of ChatGPT.
 }
 ```
 
-You can override the default pricing with: `tokmon --pricing /path/to/your/custom_pricing.json ...`
+You can override the default pricing with: `tokmon --pricing /path/to/your/custom-openai-pricing.json ...`
 
 > This pricing JSON is incomplete (missing DALL-E, etc.), it may be incorrect, and it may go out of date.
 
@@ -148,4 +166,4 @@ If you'd like to contribute to the project, please follow these steps:
 1. `tokmon` comes without any warranty or guarantee whatsoever.
 2. `tokmon` was tested on macOS only. It might not work on other platforms.
 3. This tool may not work as intended, have unknown side effects, may output incorrect information, or not work at all.
-4. The pricing data in `pricing.json` may go out of date.
+4. The pricing data in `openai-pricing.json` may go out of date.
