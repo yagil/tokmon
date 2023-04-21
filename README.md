@@ -132,7 +132,7 @@ It then processes the request and response data to calculate token usage and cos
 
 > if you [manually install `mitmproxy`'s CA certificate](https://docs.mitmproxy.org/stable/concepts-certificates/#:~:text=Go%20to%20Settings%20%3E%20General%20%3E%20About,trust%20for%20the%20mitmproxy%20certificate), it should work for all executables (note: haven't tested this.)
 
-In most cases, `tokmon` relies on the `usage` field in OpenAI's API responses for token counts. For streaming requests, however, `tokmon` uses OpenAI's [tiktoken library](https://github.com/openai/tiktoken) directly to count the tokens. As of writing OpenAI's API does not return usage data for streaming requests ([reference](https://community.openai.com/t/usage-info-in-api-responses/18862/11).)
+In most cases, `tokmon` relies on the `'usage'` field in [OpenAI's API responses](https://community.openai.com/t/usage-info-in-api-responses/18862) for token counts. For streaming requests, however, `tokmon` uses OpenAI's [tiktoken library](https://github.com/openai/tiktoken) directly to count the tokens. As of writing OpenAI's API does not return usage data for streaming requests ([reference](https://community.openai.com/t/usage-info-in-api-responses/18862/11).)
 
 ## openai-pricing.json
 The pricing data was extracted from OpenAI's website with the help of ChatGPT.
