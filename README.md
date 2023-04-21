@@ -10,54 +10,40 @@ You use `tokmon` just like you would use the `time` utility, but instead of exec
 ## Try it out
 
 ```bash
+ 
+# Install tokmon and dependencies
+pip install tokmon openai
 
-# Install tokmon
-pip install tokmon
-
-# Clone this repo and `cd` into the `tokmon` folder
-git clone https://github.com/yagil/tokmon.git && cd tokmon
+# Clone this repo and `cd` into it
+git clone https://github.com/yagil/tokmon.git && cd tokmon/
 
 # export your OpenAI API key. This will be used in the test program (source in ./tests/python_example.py)
 export OPENAI_API_KEY="YOUR_OPENAI_API_KEY" 
 
-# Run tokmon
+# Run tokmon (save the JSON summary to the current folder)
 tokmon --json_out=. python3 ./tests/python_example.py --prompt "say 'hello, tokmon!'"
 ```
 
-After your program finishes running (or you `ctrl^C` it), `tokmon` will automatically generate a cost report that looks like this:<br>
+After your program finishes running (or you `ctrl^C` out it), `tokmon` will generate a report that looks like this:<br>
 
-```yaml
+```css
 tokmon cost report:
 ================================================================================
-Monitored invocation: ./python_example.py -i
+Monitored invocation: python3 ./tests/python_example.py --prompt say 'hello, tokmon!'
 Models: ['gpt-3.5-turbo-0301']
-Total Usage: {'total_prompt_tokens': 49, 'total_completion_tokens': 44, 'total_tokens': 93}
+Total Usage: {'total_prompt_tokens': 26, 'total_completion_tokens': 12, 'total_tokens': 38}
 Pricing: {'gpt-3.5-turbo-0301': {'prompt_cost': 0.002, 'completion_cost': 0.002, 'per_tokens': 1000}}
-Total Cost: $0.000186
+Total Cost: $0.000076
 ================================================================================
 
-Writing cost summary to JSON file: /tmp/tokmon_usage_summary_1681426650.json
+Writing cost summary to JSON file: ./tokmon_usage_summary_1682039505.json
 ```
 
 #### `tokmon` also supports this:
 - If your program uses multiple OpenAI models in the same invocation, their respective usages will be reflected in the report.
 - You can run multiple instances of `tokmon` simultaneously. Each invocation will generate a separate usage report.
 - Pass a `--json_out /your/path/report.json` to get a detailed breakdown + conversation history in JSON format.
-
-# Get started with `tokmon`
-
-## Install `tokmon` via `pip`
-```
-pip install tokmon
-```
-
-Make sure installation worked by running
-```
-tokmon --help
-```
-
-To uninstall, run `pip uninstall tokmon`<br>
-
+<br>
 
 ## Use `tokmon` with your application or script
 
@@ -70,6 +56,17 @@ $ tokmon <your program> [arg1] [arg2] ...
 ```
 Run and use your program just like you would normally (arguments and all). Interactive usage is supported as well.
 
+#### Using `tokmon` with `npm run` (e.g. with NextJS)
+Edit your `package.json`'s "scripts" entry to include `tokmon`. 
+
+```js
+{
+    "scripts": {
+        "dev": "tokmon next dev",
+        ...
+    }
+}
+```
 
 ## Full usage and cost summary (JSON)
 
