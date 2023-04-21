@@ -10,7 +10,6 @@ You use `tokmon` just like you would use the `time` utility, but instead of exec
 ## Try it out
 
 ```bash
- 
 # Install tokmon and dependencies
 pip install tokmon openai
 
@@ -24,7 +23,7 @@ export OPENAI_API_KEY="YOUR_OPENAI_API_KEY"
 tokmon --json_out=. python3 ./tests/python_example.py --prompt "say 'hello, tokmon!'"
 ```
 
-After your program finishes running (or you `ctrl^C` out it), `tokmon` will generate a report that looks like this:<br>
+After your program finishes running (or you `ctrl^C` out it), `tokmon` will print a summary that looks like this:<br>
 
 ```css
 tokmon cost report:
@@ -39,16 +38,31 @@ Total Cost: $0.000076
 Writing cost summary to JSON file: ./tokmon_usage_summary_1682039505.json
 ```
 
+_See full JSON report format [below](README.md#full-usage-and-cost-summary-json)._
+
 #### `tokmon` also supports this:
 - If your program uses multiple OpenAI models in the same invocation, their respective usages will be reflected in the report.
 - You can run multiple instances of `tokmon` simultaneously. Each invocation will generate a separate usage report.
 - Pass a `--json_out /your/path/report.json` to get a detailed breakdown + conversation history in JSON format.
-<br>
+
+<hr>
+
+## Install `tokmon` via `pip`
+
+```
+pip install tokmon
+```
+
+Make sure installation worked by running
+```
+tokmon --help
+```
+
+To uninstall, run `pip uninstall tokmon`<br>
 
 ## Use `tokmon` with your application or script
-
 > **Warning**
-> This is a debugging tool. It is not intended to be used in any consequential setting. Use your best judgement, you're on your own!
+> This is a debugging tool. It is not intended to be used in any consequential setting. Use your best judgement!
 
 Prepend `tokmon` to your normal program invocation like so:
 ```bash
