@@ -67,8 +67,8 @@ TOKMON_LOGO = color("""
 OPENAI_API_PATH = "https://api.openai.com"
 DEFAULT_JSON_OUT_PATH = "/tmp"
 
-DEFAULT_BEAM_STYLE = "reqres" # or "summary" 
-DEFAULT_BEAM_URL = "localhost:5000/api/beam" 
+DEFAULT_BEAM_TYPE = BeamType.SUMMARY.value
+DEFAULT_BEAM_URL = "http://localhost:9000"
 
 def cli():
     """
@@ -101,21 +101,15 @@ def cli():
     parser.add_argument("-h", "--help", action="help", help="Show this help message and exit")
     
     parser.add_argument("--beam", type=str, choices=["summary", "reqres"], help="""The type of data to send to the tokmon beam server.
-• 'summary': sends the same data as the JSON output.
-• 'reqres': sends a JSON object after every request-response pair, and the usage summary at the end. 
-            The accumulate data is the same as the JSON report outputted locally ('--json_out').
-    
-    """)
+• 'summary': sends a JSON object with the usage summary at the end of the program.
+• 'reqres': sends a JSON object after every request-response pair, and the usage summary (minus 'raw_data') at the end.
+    """, default=None, nargs="?", const=DEFAULT_BEAM_TYPE)
     parser.add_argument("--beam_url", type=str, help="[Optional] Override the default URL for the tokmon beam server", default=DEFAULT_BEAM_URL)
 
     args = parser.parse_args()
 
     if args.no_json and args.json_out != DEFAULT_JSON_OUT_PATH:
         parser.error("Cannot use --json_out and --no_json together")
-        sys.exit(1)
-    
-    if args.beam_url != DEFAULT_BEAM_URL and args.beam is None:
-        parser.error("Cannot use --beam_url without --beam [summary|reqres]")
         sys.exit(1)
 
     if not args.program_name:
