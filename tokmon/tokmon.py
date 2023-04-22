@@ -4,50 +4,20 @@ import json
 import subprocess
 import typing
 import time
-import socket
-from typing import Callable, Any, List, Tuple, Dict
+import uuid
+from typing import List, Tuple, Dict
 
 import tiktoken
-
 from mitmproxy import http, options
 from mitmproxy.tools.dump import DumpMaster
 
-def find_available_port(start_port: int):
-    """
-    To allow multiple instances of tokmon to run concurrently.
-    """
-    port = start_port
-    while True:
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            if s.connect_ex(('localhost', port)) != 0:
-                return port
-            port += 1
-
-def count_tokens_in_json(encode_fn: Callable[[str], List[str]], data: Any) -> int:
-    token_count = 0
-    stack = [data]
-
-    while stack:
-        current = stack.pop()
-
-        if isinstance(current, dict):
-            for key, value in current.items(): # 'key' is unused
-                # empricially, the keys seem to not be counted towards the token count
-                # so we are not including this `token_count += count_tokens(key)`
-                stack.append(value)
-        elif isinstance(current, list):
-            stack.extend(current)
-        elif isinstance(current, str):
-            token_count += len(encode_fn(current))
-        else:
-            token_count += len(encode_fn( str(current) ) )
-
-    return token_count
+from tokmon.beam import BeamClient, BeamType
+from tokmon.utils import find_available_port, count_tokens_in_json
 
 PORT = find_available_port(7878)
 
 class TokenMonitor:
-    def __init__(self, target_url: str, program_name: str, *args: tuple, verbose:bool = False):
+    def __init__(self, target_url: str, program_name: str, *args: tuple, verbose:bool = False, beam_client: BeamClient = None):
         self.mitm = None
         self.target_url = target_url
         self.program_name = program_name
@@ -57,6 +27,8 @@ class TokenMonitor:
         self.verbose = verbose
         self.history: List[Tuple[Dict, Dict]] = []
         self.current_request = None
+        self.beam_client = beam_client
+        self.conversation_id = str(uuid.uuid4())
 
     # For handling streaming requests:
     # def responseheaders(self, flow: http.HTTPFlow):
@@ -70,6 +42,11 @@ class TokenMonitor:
 
     def response(self, flow: http.HTTPFlow):
         self.handle_response(flow)
+
+    def append_history(self, request: Dict, response: Dict):
+        self.history.append((request, response))
+        if self.beam_client is not None and self.beam_client.beam_type == BeamType.REQRES:
+            self.beam_client.beam(self.conversation_id, request, response)
             
     def handle_request(self, flow: http.HTTPFlow):
         if self.target_url in flow.request.pretty_url:
@@ -114,7 +91,7 @@ class TokenMonitor:
             "usage": usage
         }
 
-        self.history.append((request, response))
+        self.append_history(request, response)
         self.current_request = None
 
         if self.verbose:
@@ -249,4 +226,4 @@ class TokenMonitor:
         self.mitm.shutdown()
 
     def usage_summary(self) -> List[Tuple[Dict, Dict]]:
-        return self.history
+        return self.conversation_id, self.history

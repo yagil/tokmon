@@ -9,14 +9,20 @@ from typing import List, Tuple, Dict
 
 from tokmon.tokmon import TokenMonitor
 from tokmon.costcalculator import CostCalculator
+from tokmon.beam import BeamClient, BeamType
 
 PROG_NAME = "tokmon"
 
 BOLD = "\033[1m"
 RESET = "\033[0m"
 MAGENTA = "\033[35m"
+
+WHITE = "\033[37m"
 GRAY = "\033[90m"
 GREEN = "\033[32m"
+BLUE = "\033[34m"
+ORANGE = "\033[33m"
+PINK = "\033[95m"
 
 def bold(s:str):
     return f"{BOLD}{s}{RESET}"
@@ -46,20 +52,45 @@ def print_usage_report(monitored_invocation:str, cost_summary: Dict):
 {color("Total Cost", MAGENTA)}: {color(cost_str, MAGENTA)}
 {color('='*80, GRAY, bold=False)}
 """)
+          
+# ASCII ART for the tokmon logo
+# https://patorjk.com/software/taag/#p=display&f=Big&t=tokmon
+TOKMON_LOGO = color("""
+ ______   ______    __  __    __    __    ______    __   __    
+/\__  _\ /\  __ \  /\ \/ /   /\ "-./  \  /\  __ \  /\ "-.\ \   
+\/_/\ \/ \ \ \/\ \ \ \  _"-. \ \ \-./\ \ \ \ \/\ \ \ \ \-.  \  
+   \ \_\  \ \_____\ \ \_\ \_\ \ \_\ \ \_\ \ \_____\ \ \_\ \"\_\ 
+    \/_/   \/_____/  \/_/\/_/  \/_/  \/_/  \/_____/  \/_/ \/_/                                                                                                          
+""", GREEN, bold=False)
+
 
 OPENAI_API_PATH = "https://api.openai.com"
 DEFAULT_JSON_OUT_PATH = "/tmp"
 
+DEFAULT_BEAM_STYLE = "reqres" # or "summary" 
+DEFAULT_BEAM_URL = "localhost:5000/api/beam" 
+
 def cli():
     """
-    The {PROG_NAME} utility can be used to monitor the cost of OpenAI API calls made by a program.
-    After te program has finished running, the {PROG_NAME} will print the total cost of the program.
+    The `tokmon` utility can be used to monitor the cost of OpenAI API calls made by a program.
+    After te program has finished running, the `tokmon` will print the total cost of the program.
     """
-    parser = argparse.ArgumentParser(description="A utility to monitor OpenAI token cost of a target program.",
+    parser = argparse.ArgumentParser(description=f"""
+{TOKMON_LOGO}        
+
+{color("A utility to monitor your program's OpenAI token usage.", GREEN)}
+
+{color("• Example Usage:", BLUE)} {color("tokmon --json_out='.' <your program> [arg1] [arg2] ...", ORANGE, bold=False)}
+
+{color("• Important: you need to include the `--` arguments before the target program name and arguments.", MAGENTA)}
+
+{color("• Report Bugs & Get Help: https://github.com/yagil/tokmon/issues", GRAY)}
+
+""",
+                                     formatter_class=argparse.RawTextHelpFormatter,
                                      add_help=False)
 
     current_time = int(time.time())
-    default_json_out = os.path.join("/tmp", f"{PROG_NAME}_usage_summary_{current_time}.json")
 
     parser.add_argument("program_name", nargs="?", help="The name of the monitored program")
     parser.add_argument("args", nargs=argparse.REMAINDER, help="The command and arguments to run the monitored program")
@@ -68,12 +99,23 @@ def cli():
     parser.add_argument("-j", "--json_out", type=str, help="Path to a JSON file to write the cost summary to. Saves to /tmp by default", default=DEFAULT_JSON_OUT_PATH)
     parser.add_argument("-n", "--no_json", action="store_true", help="Do not write a cost summary to a JSON file")
     parser.add_argument("-h", "--help", action="help", help="Show this help message and exit")
+    
+    parser.add_argument("--beam", type=str, choices=["summary", "reqres"], help="""The type of data to send to the tokmon beam server.
+• 'summary': sends the same data as the JSON output.
+• 'reqres': sends a JSON object after every request-response pair, and the usage summary at the end. 
+            The accumulate data is the same as the JSON report outputted locally ('--json_out').
+    
+    """)
+    parser.add_argument("--beam_url", type=str, help="[Optional] Override the default URL for the tokmon beam server", default=DEFAULT_BEAM_URL)
 
     args = parser.parse_args()
 
- 
-    if args.json_out and args.no_json:
+    if args.no_json and args.json_out != DEFAULT_JSON_OUT_PATH:
         parser.error("Cannot use --json_out and --no_json together")
+        sys.exit(1)
+    
+    if args.beam_url != DEFAULT_BEAM_URL and args.beam is None:
+        parser.error("Cannot use --beam_url without --beam [summary|reqres]")
         sys.exit(1)
 
     if not args.program_name:
@@ -91,8 +133,20 @@ def cli():
 
     monitored_prog = f"{args.program_name} { ' '.join(args.args) if args.args else ''}"
 
+    beam_client = None
+    if args.beam:
+        # convert args.beam to beam_type Enum
+        beam_type = BeamType(args.beam)
+        beam_url = args.beam_url
+        if beam_url is None:
+            beam_url = DEFAULT_BEAM_URL
+        beam_client = BeamClient(beam_url, beam_type=beam_type, verbose=args.verbose)
+        
+        if args.verbose:
+            print(f"[{PROG_NAME}] Starting a beam server: {beam_url}. Type: {beam_type}.")
+
     # Instantiate the token monitor
-    tokmon = TokenMonitor(OPENAI_API_PATH, args.program_name, *args.args, verbose=args.verbose)
+    tokmon = TokenMonitor(OPENAI_API_PATH, args.program_name, *args.args, verbose=args.verbose, beam_client=beam_client)
 
     try:
         monitoring_str = f"[{PROG_NAME}] Monitoring token usage for {color(monitored_prog, GREEN)} ..."
@@ -109,7 +163,7 @@ def cli():
         tokmon.stop_monitoring()
         
         # Get the usage summary
-        usage_summary = tokmon.usage_summary()
+        conversation_id, usage_summary = tokmon.usage_summary()
         
         # If no usage was detected, print a message and exit
         if len(usage_summary) == 0:
@@ -118,10 +172,13 @@ def cli():
             return
 
         # Print usage report to the terminal
-        cost_summary = calculate(usage_summary, pricing)
+        cost_summary = generate_summary_object(conversation_id, usage_summary, pricing)
         print_usage_report(monitored_prog, cost_summary)
 
-        # Write usage report to a JSON file
+        if beam_client:
+            beam_client.beam_summary(cost_summary)
+
+        # Write usage report to a JSON file (indepedent of beam'ing)
         if args.json_out and not args.no_json:
             json_out_filename = f"{PROG_NAME}_usage_summary_{current_time}.json"
             out_dir_path = args.json_out
@@ -133,9 +190,9 @@ def cli():
             with open(json_out_path, "w") as f:
                  json.dump(cost_summary, f, indent=4)
 
-def calculate(usage_summary: List[Tuple[Dict, Dict]], pricing: Dict):
+def generate_summary_object(conversation_id:str, usage_summary: List[Tuple[Dict, Dict]], pricing: Dict):
     costCalculator = CostCalculator(pricing)
-    usage_with_cost = costCalculator.calculate_cost(usage_summary)
+    usage_with_cost = costCalculator.calculate_cost(conversation_id, usage_summary)
     return usage_with_cost
 
 if __name__ == '__main__':

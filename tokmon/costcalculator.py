@@ -45,7 +45,7 @@ class CostCalculator:
             "messages": messages
         }
 
-    def calculate_cost(self, usage_data:  List[Tuple[Dict, Dict]]):
+    def calculate_cost(self, conversation_id: str, usage_data: List[Tuple[Dict, Dict]]):
         """
         Calculate cost & usage for all of (request, response) pairs, return a summary
         """
@@ -70,6 +70,7 @@ class CostCalculator:
             raw_data.append(round_trip_cost)
 
         return {
+            "tokmon_conversation_id": conversation_id,
             "total_cost": total_cost,
             "total_usage": {
                 "total_prompt_tokens": total_prompt_tokens,
