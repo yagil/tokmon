@@ -22,6 +22,32 @@ CLI utility to monitor your OpenAI token costs
 `tokmon` enables you to monitor your program's OpenAI API token usage.
 
 You use `tokmon` just like you would use the `time` utility, but instead of execution time you get token usage and cost.
+
+## Installation
+```
+pip install tokmon
+```
+## Usage
+```bash
+$ tokmon <your program> [arg1] [arg2] ...
+```
+
+```css
+tokmon cost report:
+================================================================================
+Monitored invocation: python3 ./tests/python_example.py --prompt say 'hello, tokmon!'
+Models: ['gpt-3.5-turbo-0301']
+Total Usage: {'total_prompt_tokens': 26, 'total_completion_tokens': 12, 'total_tokens': 38}
+Pricing: {'gpt-3.5-turbo-0301': {'prompt_cost': 0.002, 'completion_cost': 0.002, 'per_tokens': 1000}}
+Total Cost: $0.000076
+================================================================================
+
+Writing cost summary to JSON file: ./tokmon_usage_summary_1682039505.json
+```
+After your program finishes running (or you `ctrl^C` out it), `tokmon` will print a summary that looks like the above. `tokmon` also generates a detailed report and saves it as a JSON file. You can see the report format [here](README.md#full-usage-and-cost-summary-json).
+
+
+## Demo
 <p align="center">
     <img src="https://user-images.githubusercontent.com/3611042/231910274-3872e13f-d9e6-4752-bc89-44e5d334e21f.gif" />
 </p>
@@ -43,42 +69,12 @@ export OPENAI_API_KEY="YOUR_OPENAI_API_KEY"
 tokmon --json_out=. python3 ./tests/python_example.py --prompt "say 'hello, tokmon!'"
 ```
 
-After your program finishes running (or you `ctrl^C` out it), `tokmon` will print a summary that looks like this:<br>
-
-```css
-tokmon cost report:
-================================================================================
-Monitored invocation: python3 ./tests/python_example.py --prompt say 'hello, tokmon!'
-Models: ['gpt-3.5-turbo-0301']
-Total Usage: {'total_prompt_tokens': 26, 'total_completion_tokens': 12, 'total_tokens': 38}
-Pricing: {'gpt-3.5-turbo-0301': {'prompt_cost': 0.002, 'completion_cost': 0.002, 'per_tokens': 1000}}
-Total Cost: $0.000076
-================================================================================
-
-Writing cost summary to JSON file: ./tokmon_usage_summary_1682039505.json
-```
-
-_See full JSON report format [below](README.md#full-usage-and-cost-summary-json)._
-
 #### `tokmon` also supports this:
 - If your program uses multiple OpenAI models in the same invocation, their respective usages will be reflected in the report.
 - You can run multiple instances of `tokmon` simultaneously. Each invocation will generate a separate usage report.
 - Pass a `--json_out /your/path/report.json` to get a detailed breakdown + conversation history in JSON format.
 
 <hr>
-
-## Install `tokmon` via `pip`
-
-```
-pip install tokmon
-```
-
-Make sure installation worked by running
-```
-tokmon --help
-```
-
-To uninstall, run `pip uninstall tokmon`<br>
 
 ## Use `tokmon` with your application or script
 > **Warning**
