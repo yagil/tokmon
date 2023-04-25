@@ -17,9 +17,9 @@ CLI utility to monitor your OpenAI API token usage
   </a>
 </p>
 
-# `tokmon` 🔤🧐 - monitor your program's OpenAI API costs
+# `tokmon` 🔤🧐 - CLI to monitor OpenAI API usage
 
-`tokmon` enables you to monitor your program's OpenAI API token usage.
+`tokmon` (**Tok**en **Mon**itor) keeps track of your program's OpenAI API token usage.
 
 You use `tokmon` just like you would use the `time` utility, but instead of execution time you get token usage and cost.
 
