@@ -1,4 +1,23 @@
-# `tokmon` 🔤🧐 - CLI utility to monitor OpenAI token costs
+<pre align="center">
+
+ ______   ______    __  __    __    __    ______    __   __    
+/\__  _\ /\  __ \  /\ \/ /   /\ "-./  \  /\  __ \  /\ "-.\ \   
+\/_/\ \/ \ \ \/\ \ \ \  _"-. \ \ \-./\ \ \ \ \/\ \ \ \ \-.  \  
+   \ \_\  \ \_____\ \ \_\ \_\ \ \_\ \ \_\ \ \_____\ \ \_\\"\_\ 
+    \/_/   \/_____/  \/_/\/_/  \/_/  \/_/  \/_____/  \/_/ \/_/ 
+                                                                   
+
+CLI utility to monitor your OpenAI token costs
+                                                                   
+</pre>
+
+<p align="center">
+  <a href="https://github.com/yagil/tokmon/blob/main/LICENSE" target="_blank">
+      <img src="https://img.shields.io/badge/License-Apache2.0-orange.svg" alt="License">
+  </a>
+</p>
+
+# `tokmon` 🔤🧐 - monitor your program's OpenAI token costs
 
 `tokmon` enables you to monitor your program's OpenAI API token usage.
 
@@ -10,8 +29,8 @@ You use `tokmon` just like you would use the `time` utility, but instead of exec
 ## Try it out
 
 ```bash
-# Install tokmon and dependencies
-pip install tokmon openai
+# Install tokmon
+pip install tokmon
 
 # Clone this repo and `cd` into it
 git clone https://github.com/yagil/tokmon.git && cd tokmon/
@@ -20,6 +39,7 @@ git clone https://github.com/yagil/tokmon.git && cd tokmon/
 export OPENAI_API_KEY="YOUR_OPENAI_API_KEY" 
 
 # Run tokmon (save the JSON summary to the current folder)
+# The test uses the openai python package. Install it if you don't have it: `pip install openai`
 tokmon --json_out=. python3 ./tests/python_example.py --prompt "say 'hello, tokmon!'"
 ```
 
