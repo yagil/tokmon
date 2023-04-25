@@ -7,7 +7,7 @@
     \/_/   \/_____/  \/_/\/_/  \/_/  \/_/  \/_____/  \/_/ \/_/ 
                                                                    
 
-CLI utility to monitor your OpenAI token costs
+CLI utility to monitor your OpenAI API token usage
                                                                    
 </pre>
 
@@ -17,7 +17,7 @@ CLI utility to monitor your OpenAI token costs
   </a>
 </p>
 
-# `tokmon` 🔤🧐 - monitor your program's OpenAI token costs
+# `tokmon` 🔤🧐 - monitor your program's OpenAI API costs
 
 `tokmon` enables you to monitor your program's OpenAI API token usage.
 
