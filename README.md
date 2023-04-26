@@ -19,7 +19,7 @@ CLI utility to monitor your OpenAI API token usage
 
 # `tokmon` 🔤🧐 - CLI to monitor OpenAI API usage
 
-👉 **NEW: [tokmon --beam](https://github.com/yagil/tokmon-beam) - store usage data in a db and explore it in a web UI running from `localhost`.**
+👉 **NEW: [tokmon --beam](https://github.com/yagil/tokmon-beam) - self-hosted web UI to monitor API usage data, running from `localhost`.**
 
 `tokmon` (**Tok**en **Mon**itor) keeps track of your program's OpenAI API token usage.
 
