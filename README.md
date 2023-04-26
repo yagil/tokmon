@@ -30,6 +30,7 @@ You can use `tokmon` just like you would use the `time` utility, but instead of 
 pip install tokmon
 ```
 ## Usage
+> **Note**:  tokmon works for `gpt-*` models (`gpt-3.5-turbo`, `gpt-4`, etc.). If you need support for other models (e.g. `davinci`) see [tokmon#6](https://github.com/yagil/tokmon/issues/6).
 ```bash
 $ tokmon /path/to/your/<your program> [arg1] [arg2] ...
 ```
@@ -89,7 +90,20 @@ $ tokmon /path/to/your/<your program> [arg1] [arg2] ...
 ```
 Run and use your program just like you would normally (arguments and all). Interactive usage is supported as well.
 
-#### Using `tokmon` with `npm run` (e.g. with NextJS)
+## Python
+Simply add `tokmon` to the beginning of your regular invocation
+```bash
+$ tokmon python /path/to/your/script.py
+```
+This will work for scripts and long running programs like Django / Flask / FastAPI servers.
+
+## Node
+For scripts:
+```bash
+$ tokmon node /path/to/your/script.js
+```
+
+### `npm run`
 Edit your `package.json`'s "scripts" entry to include `tokmon`. 
 
 ```js
@@ -214,7 +228,9 @@ if err == nil {
 
 ## Current Limitations
 1. Event streaming: `tokmon` buffers Server-Sent Events (SSE) until the `data: [DONE]` chunk is received. If the monitored program leverages event streaming, its behavior will be modified.
-    - Issue: [yagil/tokmon#4](https://github.com/yagil/tokmon/issues/4)
+    - Issue: [tokmon#4](https://github.com/yagil/tokmon/issues/4)
+2. Only chat models are supported (`gpt-3.5-turbo`, `gpt-4` and variants)
+    - Issue: [tokmon#6](https://github.com/yagil/tokmon/issues/6)
 
 ## Contributing
 If you'd like to contribute to the project, please follow these steps:
