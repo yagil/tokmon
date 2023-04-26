@@ -1,7 +1,7 @@
 from typing import List, Tuple, Dict
 
 class CostCalculator:
-    def __init__(self, pricing_data: Dict[str, Dict[str, float]]):
+    def __init__(self, pricing_data: Dict[str, Dict[str, float]]) -> None:
         self.pricing_data = pricing_data
 
     def calculate_cost_for_tokens(self, tokens, price, per_tokens):
@@ -38,14 +38,16 @@ class CostCalculator:
 
         messages = request["messages"] + response["messages"]
 
-        return model_pricing_data, {
+        cost_summary = {
             "model": model,
             "usage": {"prompt_tokens": prompt_tokens, "completion_tokens": completion_tokens, "total_tokens": total_tokens },
             "cost": total_cost,
             "messages": messages
         }
+        
+        return model_pricing_data, cost_summary
 
-    def calculate_cost(self, usage_data:  List[Tuple[Dict, Dict]]):
+    def calculate_cost(self, conversation_id: str, usage_data: List[Tuple[Dict, Dict]]):
         """
         Calculate cost & usage for all of (request, response) pairs, return a summary
         """
@@ -70,6 +72,7 @@ class CostCalculator:
             raw_data.append(round_trip_cost)
 
         return {
+            "tokmon_conversation_id": conversation_id,
             "total_cost": total_cost,
             "total_usage": {
                 "total_prompt_tokens": total_prompt_tokens,

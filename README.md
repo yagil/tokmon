@@ -19,9 +19,11 @@ CLI utility to monitor your OpenAI API token usage
 
 # `tokmon` 🔤🧐 - CLI to monitor OpenAI API usage
 
+👉 **NEW: [tokmon --beam](https://github.com/yagil/tokmon-beam) - self-hosted web UI to monitor API usage data, running from `localhost`.**
+
 `tokmon` (**Tok**en **Mon**itor) keeps track of your program's OpenAI API token usage.
 
-You use `tokmon` just like you would use the `time` utility, but instead of execution time you get token usage and cost.
+You can use `tokmon` just like you would use the `time` utility, but instead of execution time you get token usage and cost.
 
 ## Installation
 ```
@@ -29,7 +31,7 @@ pip install tokmon
 ```
 ## Usage
 ```bash
-$ tokmon <your program> [arg1] [arg2] ...
+$ tokmon /path/to/your/<your program> [arg1] [arg2] ...
 ```
 
 ```css
@@ -44,7 +46,8 @@ Total Cost: $0.000076
 
 Writing cost summary to JSON file: ./tokmon_usage_summary_1682039505.json
 ```
-After your program finishes running (or you `ctrl^C` out it), `tokmon` will print a summary that looks like the above. `tokmon` also generates a detailed report and saves it as a JSON file. You can see the report format [here](README.md#full-usage-and-cost-summary-json).
+After your program finishes running (or you `ctrl^C` out it), `tokmon` will print a summary that looks like the above. `tokmon` also generates a detailed report and saves it as a [JSON file](README.md#full-usage-and-cost-summary-json). <br>
+You can use the `--beam <url>` flag to stream token usage data to a server. See [tokmon --beam](https://github.com/yagil/tokmon-beam) for more information.
 
 
 ## Demo
@@ -82,7 +85,7 @@ tokmon --json_out=. python3 ./tests/python_example.py --prompt "say 'hello, tokm
 
 Prepend `tokmon` to your normal program invocation like so:
 ```bash
-$ tokmon <your program> [arg1] [arg2] ...
+$ tokmon /path/to/your/<your program> [arg1] [arg2] ...
 ```
 Run and use your program just like you would normally (arguments and all). Interactive usage is supported as well.
 
@@ -145,6 +148,7 @@ Edit your `package.json`'s "scripts" entry to include `tokmon`.
 It then processes the request and response data to calculate token usage and cost based on [tokmon/openai-pricing.json](tokmon/openai-pricing.json).
 
 > `tokmon` works for programs in `python` / `node` (using OpenAI's clients), or `curl` (run directly, and not i.e. in a bash script).
+> See [Golang instructions](#golang) for instructions on how to use `tokmon` with Golang programs.
 
 > if you [manually install `mitmproxy`'s CA certificate](https://docs.mitmproxy.org/stable/concepts-certificates/#:~:text=Go%20to%20Settings%20%3E%20General%20%3E%20About,trust%20for%20the%20mitmproxy%20certificate), it should work for all executables (note: haven't tested this.)
 
@@ -182,10 +186,36 @@ You can override the default pricing with: `tokmon --pricing /path/to/your/custo
 
 > For best results, make sure to check that you have the latest pricing.
 
+## Misc
+
+### Golang
+Hacky workaround for Golang programs. Add this to your program:
+```go
+	// Import these packages
+	import (
+		"os"
+	    "crypto/tls"
+    	"crypto/x509"
+    	"io/ioutil"
+    	"net/http"
+    )
+
+	// Place this code somewhere in your go program *before* you make any calls to OpenAI's API.
+	certFile := os.Getenv("TOKMON_SSL_CERT_FILE") // This env variable is set by tokmon whenever it runs your program.
+	caCert, err := ioutil.ReadFile(certFile)
+	if err == nil { 
+		caCertPool, _ := x509.SystemCertPool()
+		caCertPool.AppendCertsFromPEM(caCert)
+		http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{
+			RootCAs: caCertPool,
+		}
+	}
+```
+
 ## Current Limitations
 1. Event streaming: `tokmon` buffers Server-Sent Events (SSE) until the `data: [DONE]` chunk is received. If the monitored program leverages event streaming, its behavior will be modified.
-    - Status: looking into it. Pull requests welcome.
-
+    - Issue: [yagil/tokmon#4](https://github.com/yagil/tokmon/issues/4)
+2
 ## Contributing
 If you'd like to contribute to the project, please follow these steps:
 1. Fork the repository.
