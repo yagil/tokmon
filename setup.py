@@ -7,7 +7,7 @@ with open(os.path.join(os.path.dirname(__file__), "README.md"), encoding="utf-8"
 
 setup(
     name='tokmon',
-    version='0.1.4',
+    version='0.2.0',
     packages=find_packages(),
     install_requires=[
         'mitmproxy',
