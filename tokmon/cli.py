@@ -124,6 +124,8 @@ def cli():
     beam_client = None
     if args.beam:
         beam_url = args.beam
+        if not beam_url.startswith("http"):
+            beam_url = f"http://{beam_url}"
         beam_client = BeamClient(beam_url, verbose=args.verbose)
         
         if args.verbose:

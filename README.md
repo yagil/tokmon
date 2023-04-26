@@ -31,7 +31,7 @@ pip install tokmon
 ```
 ## Usage
 ```bash
-$ tokmon <your program> [arg1] [arg2] ...
+$ tokmon /path/to/your/<your program> [arg1] [arg2] ...
 ```
 
 ```css
@@ -85,7 +85,7 @@ tokmon --json_out=. python3 ./tests/python_example.py --prompt "say 'hello, tokm
 
 Prepend `tokmon` to your normal program invocation like so:
 ```bash
-$ tokmon <your program> [arg1] [arg2] ...
+$ tokmon /path/to/your/<your program> [arg1] [arg2] ...
 ```
 Run and use your program just like you would normally (arguments and all). Interactive usage is supported as well.
 
