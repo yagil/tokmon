@@ -1,3 +1,5 @@
+<h4 align="center">⚡️<i><b>NEW</b></i>: <a href="https://github.com/yagil/tokmon-beam"> tokmon beam </a> - a self-hosted web UI to monitor API usage data, running from <code>localhost</code>.</h4>
+
 <pre align="center">
 
  ______   ______    __  __    __    __    ______    __   __    
@@ -8,10 +10,8 @@
                                                                    
 
 CLI utility to monitor your OpenAI API token usage
-                                                                   
-</pre>
 
-<p align="center">⚡️<i><b>NEW</b></i>: <a href="https://github.com/yagil/tokmon-beam"> tokmon beam </a> - a self-hosted web UI to monitor API usage data, running from <code>localhost</code>.</p>
+</pre>
 
 <p align="center">
   <a href="https://github.com/yagil/tokmon/blob/main/LICENSE" target="_blank">
@@ -21,9 +21,9 @@ CLI utility to monitor your OpenAI API token usage
 
 # `tokmon` 🔤🧐 - CLI to monitor OpenAI API usage
 
-`tokmon` (**Tok**en **Mon**itor) keeps track of your program's OpenAI API token usage.
+`tokmon` (**Tok**en **Mon**itor) lets you keep track of your program's OpenAI API token usage.
 
-You can use `tokmon` just like you would use the `time` utility, but instead of execution time you get token usage and cost.
+You can use `tokmon` just like you would use the `time` utility, but instead of execution time you get OpenAI usage and cost stats.
 
 ## Installation
 ```
@@ -191,31 +191,31 @@ You can override the default pricing with: `tokmon --pricing /path/to/your/custo
 ### Golang
 Hacky workaround for Golang programs. Add this to your program:
 ```go
-	// Import these packages
-	import (
-		"os"
-	    "crypto/tls"
-    	"crypto/x509"
-    	"io/ioutil"
-    	"net/http"
-    )
+// Import these packages
+import (
+	"os"
+	"crypto/tls"
+	"crypto/x509"
+	"io/ioutil"
+	"net/http"
+)
 
-	// Place this code somewhere in your go program *before* you make any calls to OpenAI's API.
-	certFile := os.Getenv("TOKMON_SSL_CERT_FILE") // This env variable is set by tokmon whenever it runs your program.
-	caCert, err := ioutil.ReadFile(certFile)
-	if err == nil { 
-		caCertPool, _ := x509.SystemCertPool()
-		caCertPool.AppendCertsFromPEM(caCert)
-		http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{
-			RootCAs: caCertPool,
-		}
+// Place this code somewhere in your go program *before* you make any calls to OpenAI's API.
+certFile := os.Getenv("TOKMON_SSL_CERT_FILE") // This env variable will be set by tokmon
+caCert, err := ioutil.ReadFile(certFile)
+if err == nil { 
+	caCertPool, _ := x509.SystemCertPool()
+	caCertPool.AppendCertsFromPEM(caCert)
+	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{
+		RootCAs: caCertPool,
 	}
+}
 ```
 
 ## Current Limitations
 1. Event streaming: `tokmon` buffers Server-Sent Events (SSE) until the `data: [DONE]` chunk is received. If the monitored program leverages event streaming, its behavior will be modified.
     - Issue: [yagil/tokmon#4](https://github.com/yagil/tokmon/issues/4)
-2
+
 ## Contributing
 If you'd like to contribute to the project, please follow these steps:
 1. Fork the repository.
