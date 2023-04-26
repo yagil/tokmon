@@ -5,20 +5,27 @@ import subprocess
 import typing
 import time
 import uuid
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Callable, TypeVar, Optional
 
 import tiktoken
 from mitmproxy import http, options
 from mitmproxy.tools.dump import DumpMaster
 
-from tokmon.beam import BeamClient, BeamType
 from tokmon.utils import find_available_port, count_tokens_in_json
 
 PORT = find_available_port(7878)
 
+RequestResponseHandler = Callable[[str, Dict, Dict], None]
+
 class TokenMonitor:
-    def __init__(self, target_url: str, program_name: str, *args: tuple, verbose:bool = False, beam_client: BeamClient = None):
-        self.mitm = None
+    def __init__(self,
+                 target_url: str,
+                 program_name: str,
+                 *args: tuple,
+                 verbose:bool = False,
+                 req_res_handler: RequestResponseHandler = None
+                ):
+        self.mitm: Optional[DumpMaster] = None
         self.target_url = target_url
         self.program_name = program_name
         self.args = args
@@ -27,10 +34,11 @@ class TokenMonitor:
         self.verbose = verbose
         self.history: List[Tuple[Dict, Dict]] = []
         self.current_request = None
-        self.beam_client = beam_client
+        self.req_res_handler = req_res_handler
         self.conversation_id = str(uuid.uuid4())
 
-    # For handling streaming requests:
+    # Issue: https://github.com/yagil/tokmon/issues/4
+    # 
     # def responseheaders(self, flow: http.HTTPFlow):
     #     if self.target_url in flow.request.pretty_url:
     #         content_type = flow.response.headers.get("Content-Type", "")
@@ -45,25 +53,31 @@ class TokenMonitor:
 
     def append_history(self, request: Dict, response: Dict):
         self.history.append((request, response))
-        if self.beam_client is not None and self.beam_client.beam_type == BeamType.REQRES:
-            self.beam_client.beam(self.conversation_id, request, response)
             
     def handle_request(self, flow: http.HTTPFlow):
-        if self.target_url in flow.request.pretty_url:
-            try:
-                if self.current_request is not None:
-                    print("Warning: multiple requests in flight. This is not supported.")
-                
-                request_data = json.loads(flow.request.content)
-                self.current_request = request_data
+        if self.target_url not in flow.request.pretty_url:
+            return
+        
+        try:
+            if self.current_request is not None:
+                print("Warning: multiple requests in flight. This is not supported.")
+            
+            if flow.request.content is None:
+                raise Exception("No request data")
+            
+            request_data = json.loads(flow.request.content)
+            self.current_request = request_data
 
-                if self.verbose:
-                    print(request_data)
-                
-                self.using_stream = request_data["stream"]
+            if self.verbose:
+                print(request_data)
+            
+            self.using_stream = request_data["stream"] if "stream" in request_data else False
 
-            except json.JSONDecodeError:
-                print("Failed to parse request data as JSON")
+        except json.JSONDecodeError:
+            print("Failed to parse request data as JSON")
+
+        except Exception as e:
+            print(f"Error handling request: {str(e)}")
 
     def handle_response(self, flow: http.HTTPFlow):
         if not flow.request.url.startswith(self.target_url):
@@ -73,7 +87,7 @@ class TokenMonitor:
         content = ""
         usage = None
 
-        if flow.response.text:
+        if flow.response and flow.response.text is not None:
             if self.using_stream:
                 model, content, usage = self.handle_stream_response(flow.response.text)
             else:    
@@ -91,7 +105,13 @@ class TokenMonitor:
             "usage": usage
         }
 
+        # Add the request and response to the rolling history
         self.append_history(request, response)
+
+        # Invoke the delegate callback for additional handling on the response object
+        if self.req_res_handler is not None:
+            self.req_res_handler(self.conversation_id, request, response)
+
         self.current_request = None
 
         if self.verbose:
@@ -101,9 +121,9 @@ class TokenMonitor:
         env = os.environ.copy()
 
         # mitproxy automatically generates a CA cert and stores it in ~/.mitmproxy ...
+        # ... but this coroutine might be called before mitmproxy has had a chance to generate the cert ... ¯\_(ツ)_/¯.
         mitmproxy_path = os.path.expanduser("~/.mitmproxy")
         mitmproxy_abs_path = os.path.abspath(mitmproxy_path)
-        # ... but this coroutine might be called before mitmproxy has had a chance to generate the cert ... ¯\_(ツ)_/¯.
         timeout_seconds = 2
         start = time.time()
         while not os.path.exists(mitmproxy_abs_path):
@@ -118,9 +138,12 @@ class TokenMonitor:
         env["HTTP_PROXY"] = f"http://localhost:{PORT}"
         env["HTTPS_PROXY"] = f"http://localhost:{PORT}"
 
-        # add `mitmproxy`'s CA cert to the environment variables of the monitored program
+        # Add `mitmproxy`'s CA cert to the environment variables of the monitored program
         env["REQUESTS_CA_BUNDLE"] = ca_cert_abs_path # for monitored programs using Python's Requests Library
         env["NODE_EXTRA_CA_CERTS"] = ca_cert_abs_path # for monitored programs using Node.js
+        
+        # Support for manually adding `mitmproxy`'s CA cert in the monitored program
+        env["TOKMON_SSL_CERT_FILE"] = ca_cert_abs_path
 
         if self.program_name == 'curl':
             print()
@@ -198,6 +221,8 @@ class TokenMonitor:
     
     async def start_monitoring(self):        
         opts = options.Options(listen_host='0.0.0.0', listen_port=PORT)
+        if self.verbose:
+            print(f"Starting mitmproxy on port {PORT}...")
         self.mitm = DumpMaster(opts, with_termlog=False, with_dumper=False)
         self.mitm.addons.add(self)
 
@@ -225,5 +250,5 @@ class TokenMonitor:
             self.process.terminate()
         self.mitm.shutdown()
 
-    def usage_summary(self) -> List[Tuple[Dict, Dict]]:
+    def usage_summary(self):
         return self.conversation_id, self.history

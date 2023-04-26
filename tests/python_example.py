@@ -7,6 +7,9 @@ import signal
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
+MODEL = "gpt-3.5-turbo"
+# MODEL = "gpt-4"
+
 messages = [{"role": "system", "content": "You're a helpful assistant."}]
 
 # catch ctrl c
@@ -62,8 +65,7 @@ if __name__ == "__main__":
     stream = "--stream" in sys.argv
     interactive = "-i" in sys.argv
 
-    model = "gpt-3.5-turbo"
-    # model = "gpt-4"
+    model = MODEL
     
     if headless:
         main(model, prompt=sys.argv[2], stream=stream, interactive=interactive)

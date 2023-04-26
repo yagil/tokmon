@@ -9,7 +9,7 @@ from typing import List, Tuple, Dict
 
 from tokmon.tokmon import TokenMonitor
 from tokmon.costcalculator import CostCalculator
-from tokmon.beam import BeamClient, BeamType
+from tokmon.beam import BeamClient
 
 PROG_NAME = "tokmon"
 
@@ -24,16 +24,16 @@ BLUE = "\033[34m"
 ORANGE = "\033[33m"
 PINK = "\033[95m"
 
-def bold(s:str):
+def bold(s:str) -> str:
     return f"{BOLD}{s}{RESET}"
 
-def color(s:str, color:str, bold:bool = True):
+def color(s:str, color:str, bold:bool = True) -> str:
     if bold:
         return f"{BOLD}{color}{s}{RESET}"
     else:
         return f"{color}{s}{RESET}"
 
-def print_usage_report(monitored_invocation:str, cost_summary: Dict):
+def print_usage_report(monitored_invocation:str, cost_summary: Dict) -> None:
     models = cost_summary["models"]
     pricing = cost_summary["pricing_data"]
     total_cost = cost_summary["total_cost"]
@@ -67,9 +67,6 @@ TOKMON_LOGO = color("""
 OPENAI_API_PATH = "https://api.openai.com"
 DEFAULT_JSON_OUT_PATH = "/tmp"
 
-DEFAULT_BEAM_TYPE = BeamType.SUMMARY.value
-DEFAULT_BEAM_URL = "http://localhost:9000"
-
 def cli():
     """
     The `tokmon` utility can be used to monitor the cost of OpenAI API calls made by a program.
@@ -100,11 +97,7 @@ def cli():
     parser.add_argument("-n", "--no_json", action="store_true", help="Do not write a cost summary to a JSON file")
     parser.add_argument("-h", "--help", action="help", help="Show this help message and exit")
     
-    parser.add_argument("--beam", type=str, choices=["summary", "reqres"], help="""The type of data to send to the tokmon beam server.
-• 'summary': sends a JSON object with the usage summary at the end of the program.
-• 'reqres': sends a JSON object after every request-response pair, and the usage summary (minus 'raw_data') at the end.
-    """, default=None, nargs="?", const=DEFAULT_BEAM_TYPE)
-    parser.add_argument("--beam_url", type=str, help="[Optional] Override the default URL for the tokmon beam server", default=DEFAULT_BEAM_URL)
+    parser.add_argument("--beam", type=str, help="""A url to a running "tokmon Beam" server. If provided, tokmon will send the usage summary to the server.""",)
 
     args = parser.parse_args()
 
@@ -127,20 +120,31 @@ def cli():
 
     monitored_prog = f"{args.program_name} { ' '.join(args.args) if args.args else ''}"
 
+    # Setup the beam client
     beam_client = None
     if args.beam:
-        # convert args.beam to beam_type Enum
-        beam_type = BeamType(args.beam)
-        beam_url = args.beam_url
-        if beam_url is None:
-            beam_url = DEFAULT_BEAM_URL
-        beam_client = BeamClient(beam_url, beam_type=beam_type, verbose=args.verbose)
+        beam_url = args.beam
+        beam_client = BeamClient(beam_url, verbose=args.verbose)
         
         if args.verbose:
-            print(f"[{PROG_NAME}] Starting a beam server: {beam_url}. Type: {beam_type}.")
+            print(f"[{PROG_NAME}] Beaming usage blobs to: {beam_url}.")
+
+    # Instantiate the cost calculator
+    cost_calculator = CostCalculator(pricing)
 
     # Instantiate the token monitor
-    tokmon = TokenMonitor(OPENAI_API_PATH, args.program_name, *args.args, verbose=args.verbose, beam_client=beam_client)
+    tokmon = TokenMonitor(OPENAI_API_PATH,
+                          args.program_name,
+                          *args.args,
+                          verbose=args.verbose)
+
+    # Request-response handler
+    def req_res_handler(conversation_id: str, request: Dict, response: Dict):
+        if beam_client:
+            cost_so_far = calculate_usage_cost(tokmon, cost_calculator)
+            beam_client.send_rt_blob(monitored_prog, conversation_id, request, response, cost_so_far)
+
+    tokmon.req_res_handler = req_res_handler
 
     try:
         monitoring_str = f"[{PROG_NAME}] Monitoring token usage for {color(monitored_prog, GREEN)} ..."
@@ -156,21 +160,18 @@ def cli():
     finally:
         tokmon.stop_monitoring()
         
-        # Get the usage summary
-        conversation_id, usage_summary = tokmon.usage_summary()
-        
-        # If no usage was detected, print a message and exit
-        if len(usage_summary) == 0:
+        # Print usage report to the terminal
+        cost_summary = calculate_usage_cost(tokmon, cost_calculator)
+        if cost_summary is None:
+            # If no usage was detected, print a message and exit
             status_str = f"[{PROG_NAME}] No OpenAI API calls detected for `{monitored_prog}`."
             print(f"{color(status_str, MAGENTA)}")
             return
-
-        # Print usage report to the terminal
-        cost_summary = generate_summary_object(conversation_id, usage_summary, pricing)
+        
         print_usage_report(monitored_prog, cost_summary)
 
         if beam_client:
-            beam_client.beam_summary(cost_summary)
+            beam_client.send_summary_blob(monitored_prog, cost_summary)
 
         # Write usage report to a JSON file (indepedent of beam'ing)
         if args.json_out and not args.no_json:
@@ -184,10 +185,11 @@ def cli():
             with open(json_out_path, "w") as f:
                  json.dump(cost_summary, f, indent=4)
 
-def generate_summary_object(conversation_id:str, usage_summary: List[Tuple[Dict, Dict]], pricing: Dict):
-    costCalculator = CostCalculator(pricing)
-    usage_with_cost = costCalculator.calculate_cost(conversation_id, usage_summary)
-    return usage_with_cost
+def calculate_usage_cost(monitor: TokenMonitor, calculator: CostCalculator):
+    conversation_id, usage_summary = monitor.usage_summary()
+    if (len(usage_summary) == 0):
+        return None
+    return calculator.calculate_cost(conversation_id, usage_summary)
 
 if __name__ == '__main__':
     cli()
