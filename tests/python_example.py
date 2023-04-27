@@ -29,7 +29,7 @@ def main(model: str, prompt: Optional[str] = None, stream: bool = False, interac
 
 def call_openai(model: str, prompt: Optional[str], stream: bool):
     if not prompt:
-        prompt = input("Enter prompt and press ENTER\n")
+        prompt = input("\nEnter prompt and press ENTER\n")
     else:
         print(f"Prompt: {prompt}")
     messages.append({"role": "user", "content": prompt})
@@ -53,7 +53,8 @@ def call_openai(model: str, prompt: Optional[str], stream: bool):
                     print(tokens, end="", flush=True)
     else:
         gpt_response = call_res.choices[0].message.content
-        print(gpt_response)
+        print("Assistant: " + gpt_response)
+        print()
     messages.append({"role": "assistant", "content": gpt_response})
 
 if __name__ == "__main__":

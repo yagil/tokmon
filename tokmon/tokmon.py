@@ -99,6 +99,11 @@ class TokenMonitor:
             raise Exception("No response data")
         
         request = self.current_request
+        
+        # The messages are sent to OpenAI in the order that it makes sense for the LLM to read them
+        # But we want to display them in the order that they were sent by the user (i.e., the reversed order)
+        request["messages"] = [x for x in reversed(request["messages"])]
+
         response = {
             "model": model,
             "messages": [{"role": "assistant", "content": content}],
